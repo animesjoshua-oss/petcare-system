@@ -2,16 +2,47 @@
 
 ## 🎯 How to Fix "No database selected" Error
 
-The error happens because the SQL file doesn't specify which database to use. Here's how to fix it:
+The error happens because the SQL file doesn't specify which database to use. Here are **3 easy solutions**:
 
-## ✅ Method 1: Select Database in phpMyAdmin (RECOMMENDED)
+## ✅ Method 1: Uncomment USE Statement in SQL File (EASIEST)
+
+1. **Open `COMPLETE_DATABASE_SETUP.sql`** in a text editor (Notepad, VS Code, etc.)
+
+2. **Find these lines at the top** (around line 24-30):
+```sql
+-- For Production (yzz.me): Uncomment this line
+-- USE `yzzme_43078279`;
+
+-- For Local Development: Uncomment these lines
+-- CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- USE `petcare_clinic_hub`;
+```
+
+3. **Uncomment the appropriate line(s):**
+
+   **For Production (yzz.me):** Remove `--` from this line:
+   ```sql
+   USE `yzzme_43078279`;
+   ```
+
+   **For Localhost:** Remove `--` from these two lines:
+   ```sql
+   CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   USE `petcare_clinic_hub`;
+   ```
+
+4. **Save the file** and import in phpMyAdmin
+
+## ✅ Method 2: Select Database in phpMyAdmin First
+
+## ✅ Method 2: Select Database in phpMyAdmin First
 
 1. **Login to phpMyAdmin**
    - For yzz.me hosting: Go to your cPanel → phpMyAdmin
    - For localhost: Go to http://localhost/phpmyadmin
 
-2. **Select Your Database**
-   - Click on your database name in the left sidebar
+2. **Select Your Database FIRST** (This is the key step!)
+   - **Click on your database name** in the left sidebar BEFORE importing
    - For production: Click on `yzzme_43078279`
    - For localhost: Click on `petcare_clinic_hub` (or create it first)
 
@@ -20,30 +51,6 @@ The error happens because the SQL file doesn't specify which database to use. He
    - Click **Choose File** and select `COMPLETE_DATABASE_SETUP.sql`
    - Scroll down and click **Go**
    - Wait for the import to complete ✅
-
-## ✅ Method 2: Add USE Statement (Alternative)
-
-If you prefer to modify the SQL file:
-
-1. Open `COMPLETE_DATABASE_SETUP.sql` in a text editor
-2. Find these lines near the top:
-```sql
--- CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- USE `petcare_clinic_hub`;
-```
-
-3. **For Production (yzz.me):** Uncomment and change to:
-```sql
-USE `yzzme_43078279`;
-```
-
-4. **For Localhost:** Uncomment both lines:
-```sql
-CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `petcare_clinic_hub`;
-```
-
-5. Save the file and import
 
 ## ✅ Method 3: Command Line
 

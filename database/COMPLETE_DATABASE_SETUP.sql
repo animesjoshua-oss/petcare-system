@@ -20,12 +20,17 @@
 -- Last Updated: October 2026
 -- ============================================================
 
--- Create database if it doesn't exist (comment out if database already exists)
+-- ============================================================
+-- IMPORTANT: Uncomment the appropriate USE statement below
+-- ============================================================
+-- For Production (yzz.me): Uncomment this line
+-- USE `yzzme_43078279`;
+
+-- For Local Development: Uncomment these lines
 -- CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- USE `petcare_clinic_hub`;
 
--- Note: If importing to existing database (like yzzme_43078279), 
--- make sure to select the database first in phpMyAdmin before importing
+-- ============================================================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
