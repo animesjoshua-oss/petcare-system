@@ -9,14 +9,17 @@
 -- ✅ Sample clinics (16+ clinics in Dagupan/Calasiao, Pangasinan)
 -- ✅ Demo pet data for testing
 --
--- HOW TO IMPORT (Important!):
--- 1. Login to phpMyAdmin
--- 2. Click on your database name in LEFT SIDEBAR (e.g., yzzme_43078279)
--- 3. Then click Import tab and upload this file
--- 4. Click Go
+-- HOW TO IMPORT:
 --
--- DO NOT run this file via command line or query window!
--- The database must be selected in phpMyAdmin first.
+-- METHOD 1 (Recommended): Direct Import
+--   1. Make sure line 23 has: USE `yzzme_43078279`;
+--   2. Upload this file in phpMyAdmin Import tab
+--   3. If you get "Access denied" error, use METHOD 2
+--
+-- METHOD 2 (If you get permission errors):
+--   1. Comment out line 23 (add -- at the start)
+--   2. In phpMyAdmin, click on yzzme_43078279 in LEFT sidebar first
+--   3. Then import this file
 --
 -- Last Updated: October 2026
 -- ============================================================
@@ -24,15 +27,17 @@
 -- ============================================================
 -- DATABASE SELECTION
 -- ============================================================
--- IMPORTANT: Select your database in phpMyAdmin BEFORE importing!
--- Click on "yzzme_43078279" in the left sidebar, then import this file.
---
--- The USE statement is commented out to avoid permission errors:
--- USE `yzzme_43078279`;
+-- Select your database by uncommenting ONE of these options:
 
--- FOR LOCAL DEVELOPMENT ONLY:
+-- OPTION 1: For yzz.me hosting (UNCOMMENT THIS):
+USE `yzzme_43078279`;
+
+-- OPTION 2: For localhost (UNCOMMENT THESE):
 -- CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- USE `petcare_clinic_hub`;
+
+-- If you get "Access denied" error, delete the USE line above
+-- and select the database manually in phpMyAdmin sidebar first.
 
 -- ============================================================
 

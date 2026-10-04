@@ -1,30 +1,48 @@
 # Database Import Instructions
 
-## ⚠️ IMPORTANT: Select Database First!
+## 🚀 Quick Start (Choose One Method)
 
-The SQL file does NOT include a USE statement to avoid permission errors.
+The SQL file has the `USE` statement enabled by default. Try **Method 1** first.
 
-## ✅ Correct Import Steps
+---
+
+## ✅ METHOD 1: Direct Import (Try This First)
 
 ### For Production (yzz.me):
 
-1. **Login to phpMyAdmin** via cPanel
-2. **IMPORTANT: Click on `yzzme_43078279` database** in the LEFT SIDEBAR
-   - This is the key step! Don't skip this!
-3. Click **Import** tab (top menu)
+1. **Download** `COMPLETE_DATABASE_SETUP.sql` from GitHub
+2. **Login to phpMyAdmin** via cPanel
+3. Click **Import** tab (don't select any database yet)
 4. **Choose File**: Select `COMPLETE_DATABASE_SETUP.sql`
-5. Scroll down and click **Go** button
-6. Wait for import to complete (1-2 minutes)
-7. **Done!** ✅
+5. Click **Go**
+6. **Done!** ✅
 
-### Why Select Database First?
+The file has `USE yzzme_43078279;` on line 23, so it will select the database automatically.
 
-The error `#1044 - Access denied` happens when:
-- You try to run `USE database_name` command
-- But your hosting doesn't allow this command
-- **Solution:** Select the database in phpMyAdmin sidebar BEFORE importing
+### If you get error:
+- **Error #1046** (No database selected): The USE statement got removed - see Method 2
+- **Error #1044** (Access denied): Your hosting blocks USE command - see Method 2
 
-This way, phpMyAdmin knows which database to use without needing the USE command.
+---
+
+## ✅ METHOD 2: Select Database First
+
+If Method 1 fails with permission errors:
+
+1. **Open** `COMPLETE_DATABASE_SETUP.sql` in text editor
+2. **Find line 23**: `USE yzzme_43078279;`
+3. **Comment it out**: Add `--` at the start:
+   ```sql
+   -- USE yzzme_43078279`;
+   ```
+4. **Save the file**
+5. **In phpMyAdmin:**
+   - **Click `yzzme_43078279`** in LEFT sidebar first ← Important!
+   - Then click **Import** tab
+   - Upload the edited SQL file
+   - Click **Go**
+
+---
 
 ### For Local Development:
 
