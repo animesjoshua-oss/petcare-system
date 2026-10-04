@@ -1,0 +1,10 @@
+[2026-09-21 09:22:55] ===== Inactivity Checker Started =====
+[2026-09-21 09:22:55] Warn cutoff     : 2026-08-22 09:22:55 (inactive >= 30 days)
+[2026-09-21 09:22:55] Deactivate cutoff: 2026-06-23 09:22:55 (inactive >= 90 days)
+[2026-09-21 09:22:55] Users to deactivate: 0
+[2026-09-21 09:22:55] Users to warn: 0
+[2026-09-21 09:22:55] ===== Inactivity Checker Complete =====
+[2026-09-21 09:22:55]   Warned      : 0
+[2026-09-21 09:22:55]   Deactivated : 0
+[2026-09-21 09:22:55]   Skipped     : 0
+[2026-09-21 09:22:55] ========================================

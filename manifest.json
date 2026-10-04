@@ -1,0 +1,27 @@
+{
+  "name": "PetCare+ Clinic Hub",
+  "short_name": "PetCare+",
+  "description": "Find top-rated veterinary clinics & grooming centers in Pangasinan.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1117",
+  "theme_color": "#00D4AA",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/logo/petcare-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/logo/petcare-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/logo/petcare-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

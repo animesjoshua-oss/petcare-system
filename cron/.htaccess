@@ -1,0 +1,4 @@
+# Block all browser access to cron scripts
+# They can only be run via CLI or with the secret token
+Order deny,allow
+Deny from all

@@ -1,0 +1,22 @@
+<?php
+require_once __DIR__ . '/../includes/functions.php';
+requireLogin();
+
+header('Content-Type: application/json');
+$data = json_decode(file_get_contents('php://input'), true);
+$clinicId = (int)($data['clinic_id'] ?? 0);
+$userId   = $_SESSION['user_id'];
+$db       = getDB();
+
+if (!$clinicId) { jsonResponse(['error'=>'Missing clinic ID.'],400); }
+
+$chk = $db->prepare('SELECT id FROM favorite_clinics WHERE user_id=? AND clinic_id=?');
+$chk->execute([$userId,$clinicId]); $exists = $chk->fetch();
+
+if ($exists) {
+    $db->prepare('DELETE FROM favorite_clinics WHERE user_id=? AND clinic_id=?')->execute([$userId,$clinicId]);
+    jsonResponse(['success'=>true,'action'=>'removed']);
+} else {
+    $db->prepare('INSERT INTO favorite_clinics (user_id,clinic_id) VALUES (?,?)')->execute([$userId,$clinicId]);
+    jsonResponse(['success'=>true,'action'=>'added']);
+}
