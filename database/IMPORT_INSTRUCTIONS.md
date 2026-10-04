@@ -1,148 +1,135 @@
-# Database Import Instructions
+# 📥 Database Import Instructions
 
-## 🚀 Quick Start (Choose One Method)
+## ⚠️ CRITICAL: Read This First!
 
-The SQL file has the `USE` statement enabled by default. Try **Method 1** first.
-
----
-
-## ✅ METHOD 1: Direct Import (Try This First)
-
-### For Production (yzz.me):
-
-1. **Download** `COMPLETE_DATABASE_SETUP.sql` from GitHub
-2. **Login to phpMyAdmin** via cPanel
-3. Click **Import** tab (don't select any database yet)
-4. **Choose File**: Select `COMPLETE_DATABASE_SETUP.sql`
-5. Click **Go**
-6. **Done!** ✅
-
-The file has `USE yzzme_43078279;` on line 23, so it will select the database automatically.
-
-### If you get error:
-- **Error #1046** (No database selected): The USE statement got removed - see Method 2
-- **Error #1044** (Access denied): Your hosting blocks USE command - see Method 2
+The SQL file **DOES NOT** select a database automatically.  
+**You MUST select it manually in phpMyAdmin.**
 
 ---
 
-## ✅ METHOD 2: Select Database First
+## ✅ Step-by-Step Import (yzz.me Production)
 
-If Method 1 fails with permission errors:
+### 1. Login to phpMyAdmin
+- Go to your cPanel
+- Click on **phpMyAdmin**
 
-1. **Open** `COMPLETE_DATABASE_SETUP.sql` in text editor
-2. **Find line 23**: `USE yzzme_43078279;`
-3. **Comment it out**: Add `--` at the start:
-   ```sql
-   -- USE yzzme_43078279`;
-   ```
-4. **Save the file**
-5. **In phpMyAdmin:**
-   - **Click `yzzme_43078279`** in LEFT sidebar first ← Important!
-   - Then click **Import** tab
-   - Upload the edited SQL file
-   - Click **Go**
+### 2. Select Database (MOST IMPORTANT STEP!)
+- Look at the **LEFT SIDEBAR**
+- **Click on `yzzme_43078279`** (your database name)
+- The database name should be highlighted/selected
+
+### 3. Import the File
+- Click the **Import** tab at the top
+- Click **Choose File** button
+- Select `COMPLETE_DATABASE_SETUP.sql`
+- Scroll down
+- Click **Go** button
+
+### 4. Wait for Completion
+- Import takes 1-2 minutes
+- Don't close the browser
+- You'll see a success message when done
 
 ---
 
-### For Local Development:
+## 🎯 Why You Must Select Database First
 
-If you want to use this on localhost, edit the SQL file first:
+**The Problem:**
+- Error: `#1046 - No database selected` means phpMyAdmin doesn't know which database to use
+- Error: `#1044 - Access denied` means the hosting blocks `USE database` commands
 
-1. Open `COMPLETE_DATABASE_SETUP.sql`
-2. Find this section (around line 24):
-   ```sql
-   USE `yzzme_43078279`;
-   ```
-3. **Comment it out** and uncomment the local lines:
-   ```sql
-   -- USE `yzzme_43078279`;
-   
-   CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   USE `petcare_clinic_hub`;
-   ```
-4. Save and import
+**The Solution:**
+- Manually click the database name in the sidebar BEFORE importing
+- This tells phpMyAdmin which database to use
+- No USE command needed in the SQL file
+
+---
 
 ## 📋 What Gets Imported
 
-The SQL file contains:
-- ✅ All database tables (users, clinics, pets, appointments, etc.)
-- ✅ Demo user accounts
-- ✅ Sample clinics in Dagupan/Calasiao, Pangasinan
-- ✅ Demo pet data
-- ✅ Initial roles and permissions
+After successful import, you'll have:
 
-## 🔑 Demo Login Credentials
+### Tables Created:
+- ✅ users, roles
+- ✅ clinics, services
+- ✅ pets, pet_health_records
+- ✅ appointments, ratings
+- ✅ veterinarians, groomers
+- ✅ notifications, favorites
+- ✅ ai_recommendations, ai_summaries
 
-After successful import, you can login with:
-
-**Admin Account:**
-- Email: `admin@petcareplus.com`
-- Password: `petcare123`
-
-**Pet Owner Account:**
-- Email: `owner.demo@petcareplus.com`
-- Password: `petcare123`
-
-## ⚙️ Alternative Import Methods
-
-### Command Line (Production):
-```bash
-mysql -h localhost -u yzzme_43078279 -p yzzme_43078279 < COMPLETE_DATABASE_SETUP.sql
-```
-Then enter password: `4DfvsKy9U01X`
-
-### Command Line (Local):
-```bash
-mysql -u root -p petcare_clinic_hub < COMPLETE_DATABASE_SETUP.sql
-```
-
-## ⚠️ Important Notes
-
-1. **For Production (yzz.me):**
-   - Database name: `yzzme_43078279`
-   - Username: `yzzme_43078279`
-   - SQL file is pre-configured - just import!
-
-2. **For Local Development:**
-   - Edit the SQL file to use local database
-   - Default username is usually `root` with no password
-
-3. **File Size:**
-   - The SQL file is comprehensive and may take 1-2 minutes to import
-   - Don't close the browser during import
-
-## 🐛 Troubleshooting
-
-**Error: "Table already exists"**
-- The SQL file drops existing tables first
-- If you still get this error, manually delete all tables and re-import
-
-**Error: "Access denied"**
-- Check your database username and password
-- Make sure the database user has full permissions
-
-**Import timeout:**
-- Increase PHP max_execution_time in php.ini
-- Or import via command line instead
-
-## ✅ Verify Import Success
-
-After importing, check if these tables exist:
-- users
-- roles
-- clinics
-- pets
-- appointments
-- services
-- veterinarians
-- groomers
-
-You should see **demo data** including:
-- 1 admin user
-- 1 pet owner user
-- 16+ demo clinics
-- 1 demo pet
+### Demo Data:
+- ✅ 1 Admin account
+- ✅ 1 Pet Owner account with demo pet
+- ✅ 16+ Sample clinics in Pangasinan
+- ✅ All user roles configured
 
 ---
 
-**Need Help?** Open an issue on GitHub or contact support.
+## 🔑 Login After Import
+
+### Admin Dashboard:
+```
+Email: admin@petcareplus.com
+Password: petcare123
+URL: https://petcareplus.yzz.me/dashboard/admin/
+```
+
+### Pet Owner Dashboard:
+```
+Email: owner.demo@petcareplus.com
+Password: petcare123
+URL: https://petcareplus.yzz.me/dashboard/owner/
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Error: "No database selected"
+**Fix:** You didn't select the database first.  
+Go back to step 2 and click on `yzzme_43078279` in the sidebar.
+
+### Error: "Access denied for user"
+**Fix:** Wrong credentials in config.php  
+Check `includes/config.php` has correct database credentials.
+
+### Error: "Table already exists"
+**Fix:** Database has old tables.  
+The SQL file drops tables first, but if this fails:
+1. Manually delete all tables in phpMyAdmin
+2. Re-import the SQL file
+
+### Import Timeout
+**Fix:** File too large for server limits.  
+Contact your hosting support to increase:
+- `upload_max_filesize`
+- `post_max_size`
+- `max_execution_time`
+
+Or use command line:
+```bash
+mysql -h localhost -u yzzme_43078279 -p yzzme_43078279 < COMPLETE_DATABASE_SETUP.sql
+```
+Password: `4DfvsKy9U01X`
+
+---
+
+## ✅ Verify Success
+
+After import, check in phpMyAdmin:
+
+1. Click on `yzzme_43078279` database
+2. You should see **20+ tables** listed
+3. Click on `users` table
+4. Click **Browse** tab
+5. You should see 2 users (admin and demo owner)
+
+If you see the tables and data, **import was successful!** ✅
+
+---
+
+## 📞 Need Help?
+
+- GitHub: https://github.com/techytropa-prog/petcare-clinic-hub
+- Open an issue with screenshot of any errors

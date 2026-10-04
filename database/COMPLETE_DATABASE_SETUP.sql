@@ -1,44 +1,33 @@
 -- ============================================================
 -- PETCARE+ CLINIC HUB - COMPLETE DATABASE SETUP
 -- ============================================================
--- This SQL file contains everything you need to set up PetCare+:
+-- Complete database schema with demo data for PetCare+ Clinic Hub
 --
--- ✅ Complete database schema (all tables, indexes, foreign keys)
--- ✅ User roles (pet_owner, veterinarian, groomer, admin)
--- ✅ Demo accounts (admin, owner with sample data)
--- ✅ Sample clinics (16+ clinics in Dagupan/Calasiao, Pangasinan)
--- ✅ Demo pet data for testing
+-- Contains:
+-- • All database tables with relationships
+-- • User roles and demo accounts
+-- • 16+ sample clinics in Dagupan/Calasiao
+-- • Demo pet data
 --
--- HOW TO IMPORT:
+-- IMPORT INSTRUCTIONS:
+-- 1. Open phpMyAdmin
+-- 2. Click your database name (yzzme_43078279) in the LEFT sidebar
+-- 3. Click Import tab
+-- 4. Choose this file and click Go
 --
--- METHOD 1 (Recommended): Direct Import
---   1. Make sure line 23 has: USE `yzzme_43078279`;
---   2. Upload this file in phpMyAdmin Import tab
---   3. If you get "Access denied" error, use METHOD 2
+-- DO NOT use SQL query tab or command line!
 --
--- METHOD 2 (If you get permission errors):
---   1. Comment out line 23 (add -- at the start)
---   2. In phpMyAdmin, click on yzzme_43078279 in LEFT sidebar first
---   3. Then import this file
---
--- Last Updated: October 2026
 -- ============================================================
 
 -- ============================================================
--- DATABASE SELECTION
+-- DATABASE SELECTION - NOT NEEDED
 -- ============================================================
--- Select your database by uncommenting ONE of these options:
-
--- OPTION 1: For yzz.me hosting (UNCOMMENT THIS):
-USE `yzzme_43078279`;
-
--- OPTION 2: For localhost (UNCOMMENT THESE):
--- CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- USE `petcare_clinic_hub`;
-
--- If you get "Access denied" error, delete the USE line above
--- and select the database manually in phpMyAdmin sidebar first.
-
+-- This file does NOT use a USE statement.
+-- You MUST select the database in phpMyAdmin before importing.
+--
+-- For yzz.me: Click "yzzme_43078279" in left sidebar, then import
+-- For localhost: Click "petcare_clinic_hub" in left sidebar, then import
+--
 -- ============================================================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
