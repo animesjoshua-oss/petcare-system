@@ -1,20 +1,30 @@
 # Database Import Instructions
 
-## ✅ READY TO USE - Just Import!
+## ⚠️ IMPORTANT: Select Database First!
 
-The SQL file is now **pre-configured for production (yzz.me)**. Just import it directly!
+The SQL file does NOT include a USE statement to avoid permission errors.
 
-## 🚀 Quick Import Steps
+## ✅ Correct Import Steps
 
 ### For Production (yzz.me):
 
 1. **Login to phpMyAdmin** via cPanel
-2. Click **Import** tab
-3. **Choose File**: Select `COMPLETE_DATABASE_SETUP.sql`
-4. Click **Go** button
-5. **Done!** ✅
+2. **IMPORTANT: Click on `yzzme_43078279` database** in the LEFT SIDEBAR
+   - This is the key step! Don't skip this!
+3. Click **Import** tab (top menu)
+4. **Choose File**: Select `COMPLETE_DATABASE_SETUP.sql`
+5. Scroll down and click **Go** button
+6. Wait for import to complete (1-2 minutes)
+7. **Done!** ✅
 
-The file will automatically use database: `yzzme_43078279`
+### Why Select Database First?
+
+The error `#1044 - Access denied` happens when:
+- You try to run `USE database_name` command
+- But your hosting doesn't allow this command
+- **Solution:** Select the database in phpMyAdmin sidebar BEFORE importing
+
+This way, phpMyAdmin knows which database to use without needing the USE command.
 
 ### For Local Development:
 

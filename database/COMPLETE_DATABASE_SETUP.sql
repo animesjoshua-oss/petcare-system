@@ -9,11 +9,14 @@
 -- ✅ Sample clinics (16+ clinics in Dagupan/Calasiao, Pangasinan)
 -- ✅ Demo pet data for testing
 --
--- READY FOR PRODUCTION (yzz.me) - Just import this file!
--- The database 'yzzme_43078279' will be used automatically.
+-- HOW TO IMPORT (Important!):
+-- 1. Login to phpMyAdmin
+-- 2. Click on your database name in LEFT SIDEBAR (e.g., yzzme_43078279)
+-- 3. Then click Import tab and upload this file
+-- 4. Click Go
 --
--- For Local Development:
---   Edit line 26-28 to use local database instead
+-- DO NOT run this file via command line or query window!
+-- The database must be selected in phpMyAdmin first.
 --
 -- Last Updated: October 2026
 -- ============================================================
@@ -21,10 +24,13 @@
 -- ============================================================
 -- DATABASE SELECTION
 -- ============================================================
--- PRODUCTION: This will use the yzzme_43078279 database
-USE `yzzme_43078279`;
+-- IMPORTANT: Select your database in phpMyAdmin BEFORE importing!
+-- Click on "yzzme_43078279" in the left sidebar, then import this file.
+--
+-- The USE statement is commented out to avoid permission errors:
+-- USE `yzzme_43078279`;
 
--- LOCAL DEVELOPMENT: Comment the line above and uncomment these:
+-- FOR LOCAL DEVELOPMENT ONLY:
 -- CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- USE `petcare_clinic_hub`;
 
