@@ -1,21 +1,19 @@
 -- ============================================================
 -- PETCARE+ CLINIC HUB - COMPLETE DATABASE SETUP
 -- ============================================================
--- This is a comprehensive merged SQL file containing:
--- 1. Full database schema (tables, indexes, constraints)
--- 2. Initial data (roles, demo clinics)
--- 3. Services seed data
--- 4. Veterinarians seed data
--- 5. Demo user data
--- 6. Medical record types update
--- 7. Clinic images update
+-- This SQL file contains everything you need to set up PetCare+:
 --
--- USAGE:
--- For Production (yzz.me): Database already exists, just import this file
+-- ✅ Complete database schema (all tables, indexes, foreign keys)
+-- ✅ User roles (pet_owner, veterinarian, groomer, admin)
+-- ✅ Demo accounts (admin, owner with sample data)
+-- ✅ Sample clinics (16+ clinics in Dagupan/Calasiao, Pangasinan)
+-- ✅ Demo pet data for testing
+--
+-- READY FOR PRODUCTION (yzz.me) - Just import this file!
+-- The database 'yzzme_43078279' will be used automatically.
+--
 -- For Local Development:
---   1. Create database: CREATE DATABASE petcare_clinic_hub;
---   2. Import this file in phpMyAdmin or run: mysql -u root -p petcare_clinic_hub < COMPLETE_DATABASE_SETUP.sql
---   3. Update config.php with your database credentials
+--   Edit line 26-28 to use local database instead
 --
 -- Last Updated: October 2026
 -- ============================================================
