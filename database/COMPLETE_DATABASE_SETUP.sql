@@ -2,8 +2,8 @@
 -- PETCARE+ CLINIC HUB - COMPLETE DATABASE SETUP
 -- ============================================================
 
--- SELECT YOUR DATABASE FIRST IN PHPMYADMIN BEFORE IMPORTING!
--- Click on "yzzme_43078279" in the left sidebar, then import this file.
+-- SELECT DATABASE
+USE `yzzme_43078279`;
 
 -- ============================================================
 
