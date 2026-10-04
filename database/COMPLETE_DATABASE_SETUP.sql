@@ -21,12 +21,12 @@
 -- ============================================================
 
 -- ============================================================
--- IMPORTANT: Uncomment the appropriate USE statement below
+-- DATABASE SELECTION
 -- ============================================================
--- For Production (yzz.me): Uncomment this line
--- USE `yzzme_43078279`;
+-- PRODUCTION: This will use the yzzme_43078279 database
+USE `yzzme_43078279`;
 
--- For Local Development: Uncomment these lines
+-- LOCAL DEVELOPMENT: Comment the line above and uncomment these:
 -- CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- USE `petcare_clinic_hub`;
 
