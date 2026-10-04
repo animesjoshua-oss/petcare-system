@@ -11,12 +11,21 @@
 -- 7. Clinic images update
 --
 -- USAGE:
--- 1. Create database: CREATE DATABASE petcare_clinic_hub;
--- 2. Import this file in phpMyAdmin or run: mysql -u root -p petcare_clinic_hub < COMPLETE_DATABASE_SETUP.sql
--- 3. Update config.php with your database credentials
+-- For Production (yzz.me): Database already exists, just import this file
+-- For Local Development:
+--   1. Create database: CREATE DATABASE petcare_clinic_hub;
+--   2. Import this file in phpMyAdmin or run: mysql -u root -p petcare_clinic_hub < COMPLETE_DATABASE_SETUP.sql
+--   3. Update config.php with your database credentials
 --
 -- Last Updated: October 2026
 -- ============================================================
+
+-- Create database if it doesn't exist (comment out if database already exists)
+-- CREATE DATABASE IF NOT EXISTS `petcare_clinic_hub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- USE `petcare_clinic_hub`;
+
+-- Note: If importing to existing database (like yzzme_43078279), 
+-- make sure to select the database first in phpMyAdmin before importing
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
