@@ -1,33 +1,10 @@
 -- ============================================================
 -- PETCARE+ CLINIC HUB - COMPLETE DATABASE SETUP
 -- ============================================================
--- Complete database schema with demo data for PetCare+ Clinic Hub
---
--- Contains:
--- • All database tables with relationships
--- • User roles and demo accounts
--- • 16+ sample clinics in Dagupan/Calasiao
--- • Demo pet data
---
--- IMPORT INSTRUCTIONS:
--- 1. Open phpMyAdmin
--- 2. Click your database name (yzzme_43078279) in the LEFT sidebar
--- 3. Click Import tab
--- 4. Choose this file and click Go
---
--- DO NOT use SQL query tab or command line!
---
--- ============================================================
 
--- ============================================================
--- DATABASE SELECTION - NOT NEEDED
--- ============================================================
--- This file does NOT use a USE statement.
--- You MUST select the database in phpMyAdmin before importing.
---
--- For yzz.me: Click "yzzme_43078279" in left sidebar, then import
--- For localhost: Click "petcare_clinic_hub" in left sidebar, then import
---
+-- SELECT YOUR DATABASE FIRST IN PHPMYADMIN BEFORE IMPORTING!
+-- Click on "yzzme_43078279" in the left sidebar, then import this file.
+
 -- ============================================================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
