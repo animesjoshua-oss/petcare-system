@@ -1,0 +1,51 @@
+============================================================
+  PetCare+ Clinic Hub — Account Credentials
+============================================================
+
+DEFAULT PASSWORD KEY:
+  admin123   → admin & superadmin accounts
+  petcare123 → all other accounts (vets, groomers, owners)
+
+------------------------------------------------------------
+  ADMIN ACCOUNTS
+------------------------------------------------------------
+  Superadmin
+  Email    : superadmin@petcareplus.com
+  Password : admin123
+
+  Clinic Admin
+  Email    : clinicadmin@petcareplus.com
+  Password : admin123
+
+------------------------------------------------------------
+  VETERINARIAN ACCOUNTS
+------------------------------------------------------------
+  vet@petcareplus.com       | petcare123  (Jose Reyes)
+  vet2@petcareplus.com      | petcare123  (Miguel Aguilar)
+  vet3@petcareplus.com      | petcare123  (Maria Dela Cruz)
+  vet4@petcareplus.com      | petcare123  (Carlos Santos)
+  vet5@petcareplus.com      | petcare123  (Liza Mendoza)
+  vet6@petcareplus.com      | petcare123  (Ramon Garcia)
+  vet7@petcareplus.com      | petcare123  (Elena Bautista)
+  vet8@petcareplus.com      | petcare123  (Mario Torres)
+  vet9@petcareplus.com      | petcare123  (Rosa Villanueva)
+  vet10@petcareplus.com     | petcare123  (Pedro Aquino)
+  vet11@petcareplus.com     | petcare123  (Nora Castillo)
+  vet12@petcareplus.com     | petcare123  (Felix Ramos)
+  vet13@petcareplus.com     | petcare123  (Gloria Navarro)
+  vet14@petcareplus.com     | petcare123  (Andres Pascual)
+  vet15@petcareplus.com     | petcare123  (Celine Dizon)
+  vet16@petcareplus.com     | petcare123  (Marco Ignacio)
+
+------------------------------------------------------------
+  GROOMER ACCOUNTS
+------------------------------------------------------------
+  groomer@petcareplus.com   | petcare123  (Ana Cruz)
+  groomer2@petcareplus.com  | petcare123  (Bianca Flores)
+  groomer3@petcareplus.com  | petcare123  (Jasmine Ortega)
+  groomer4@petcareplus.com  | petcare123  (Kevin Lim)
+  groomer5@petcareplus.com  | petcare123  (Trisha Rebollos)
+  groomer6@petcareplus.com  | petcare123  (Dante Soriano)
+  groomer7@petcareplus.com  | petcare123  (Renz Reyes)
+
+============================================================
