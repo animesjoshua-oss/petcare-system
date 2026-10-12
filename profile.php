@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         </div>
         <div style="font-size:1.1rem;font-weight:700;"><?= sanitize($user['first_name'].' '.$user['last_name']) ?></div>
         <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:.4rem;"><?= sanitize($user['email']) ?></div>
-        <span class="badge badge-primary"><?= ucfirst(str_replace('_',' ',$user['role_name'])) ?></span>
+        <span class="badge badge-primary"><?= displayRoleName($user['role_name']) ?></span>
         <div style="margin-top:1rem;font-size:.78rem;color:var(--text-muted)">Member since <?= date('M Y',strtotime($user['created_at'])) ?></div>
       </div></div>
 

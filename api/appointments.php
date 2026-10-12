@@ -5,37 +5,33 @@ requireLogin();
 $db     = getDB();
 $method = $_SERVER['REQUEST_METHOD'];
 $user   = currentUser();
+$isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
+if ($method !== 'POST') {
+    if ($isAjax) jsonResponse(['error' => 'Method not allowed.'], 405);
+    http_response_code(405);
+    header('Allow: POST');
+    exit('Method not allowed.');
+}
 $requestData = $_POST;
 if ($method === 'POST' && str_contains(strtolower($_SERVER['CONTENT_TYPE'] ?? ''), 'application/json')) {
     $decoded = json_decode(file_get_contents('php://input'), true);
     if (is_array($decoded)) $requestData = $decoded;
 }
 
-// Support both POST form and GET with action param
-$action = '';
-$apptId = 0;
-
-if ($method === 'POST') {
-    $action = sanitize((string)($requestData['action'] ?? ''));
-    $apptId = (int)($requestData['appointment_id'] ?? 0);
-    $csrf   = (string)($requestData['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-    $cancelReason = sanitize((string)($requestData['cancel_reason'] ?? ''));
-} else {
-    $action = sanitize($_GET['action'] ?? '');
-    $apptId = (int)($_GET['id'] ?? 0);
-    $csrf   = $_GET['csrf'] ?? '';
-    $cancelReason = '';
-}
+$action = sanitize((string)($requestData['action'] ?? ''));
+$apptId = (int)($requestData['appointment_id'] ?? 0);
+$csrf   = (string)($requestData['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+$cancelReason = sanitize((string)($requestData['cancel_reason'] ?? ''));
 
 if (!verifyCsrfToken($csrf)) {
-    if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) jsonResponse(['error'=>'Invalid CSRF token.'],403);
+    if ($isAjax) jsonResponse(['error'=>'Invalid CSRF token.'],403);
     header('Location: ' . APP_URL . '/dashboard/owner/appointments.php?error=csrf');
     exit;
 }
 
 if (!$apptId) {
-    if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) jsonResponse(['error'=>'Missing appointment ID.'],400);
-    header('Location: ' . APP_URL . '/login.php'); exit;
+    if ($isAjax) jsonResponse(['error'=>'Missing appointment ID.'],400);
+    header('Location: ' . APP_URL . '/dashboard/owner/appointments.php'); exit;
 }
 
 // Fetch appointment
@@ -43,7 +39,7 @@ $stmt = $db->prepare('SELECT a.*,c.admin_id,v.user_id AS vet_user_id,g.user_id A
 $stmt->execute([$apptId]); $appt = $stmt->fetch();
 
 if (!$appt) {
-    if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) jsonResponse(['error'=>'Appointment not found.'],404);
+    if ($isAjax) jsonResponse(['error'=>'Appointment not found.'],404);
     header('Location: ' . APP_URL . '/dashboard/owner/appointments.php'); exit;
 }
 
@@ -55,7 +51,7 @@ $canManage = $user['role_name']==='superadmin'
     || ($user['role_name']==='pet_owner'     && $appt['owner_id']==$user['id'] && in_array($action,['cancel']));
 
 if (!$canManage) {
-    if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) jsonResponse(['error'=>'Unauthorized.'],403);
+    if ($isAjax) jsonResponse(['error'=>'Unauthorized.'],403);
     header('Location: ' . APP_URL . '/unauthorized.php'); exit;
 }
 
@@ -68,7 +64,7 @@ $newStatus = match($action) {
 };
 
 if (!$newStatus) {
-    if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) jsonResponse(['error'=>'Invalid action.'],400);
+    if ($isAjax) jsonResponse(['error'=>'Invalid action.'],400);
     header('Location: ' . APP_URL . '/dashboard/owner/appointments.php'); exit;
 }
 
@@ -97,7 +93,7 @@ if ($newStatus === 'cancelled' && $appt['owner_id'] == $user['id'] && $cancelRea
     createNotification($appt['admin_id'], 'Appointment Cancelled', $clinicMsg, 'warning', APP_URL.'/dashboard/admin/appointments.php');
 }
 
-if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+if ($isAjax) {
     jsonResponse(['success'=>true,'message'=>'Appointment '.ucfirst($newStatus).'!','status'=>$newStatus]);
 }
 

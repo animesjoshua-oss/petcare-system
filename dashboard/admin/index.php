@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../includes/functions.php';
 requireLogin(); requireRole(['admin','superadmin']);
 $user = currentUser();
-$pageTitle = 'Admin Dashboard';
+$pageTitle = 'Clinic Admin Dashboard';
 $isDashboard = true;
 $db = getDB();
 
@@ -84,183 +84,315 @@ $recentUsers = $db->query("
   <div class="dash-header">
     <div class="admin-dash-header">
       <div class="admin-dash-title">
-        <div class="dash-breadcrumb"><a href="#">Home</a> / <span>Dashboard</span></div>
-        <h1>Overview</h1>
-        <p>Welcome back, <?= sanitize($user['first_name']) ?> &nbsp;·&nbsp; <?= date('l, F j, Y') ?></p>
+        <div class="dash-breadcrumb">
+          <a href="<?= APP_URL ?>/index.php"><i class="fas fa-home"></i> Home</a>
+          <span class="dash-breadcrumb-sep">/</span>
+          <span>Dashboard</span>
+        </div>
+        <h1>Business Dashboard</h1>
+        <p>Welcome back, <?= sanitize($user['first_name']) ?> · <?= date('l, F j, Y') ?></p>
       </div>
       <div class="admin-dash-actions">
-        <select class="form-control admin-range-select" onchange="window.location.href='?range='+this.value">
-          <option value="7"  <?= $range===7  ?'selected':'' ?>>Last 7 days</option>
-          <option value="30" <?= $range===30 ?'selected':'' ?>>Last 30 days</option>
-          <option value="90" <?= $range===90 ?'selected':'' ?>>Last 90 days</option>
+        <select class="admin-range-select" onchange="window.location.href='?range='+this.value">
+          <option value="7"  <?= $range===7  ?'selected':'' ?>><i class="far fa-calendar"></i> Last 7 days</option>
+          <option value="30" <?= $range===30 ?'selected':'' ?>><i class="far fa-calendar"></i> Last 30 days</option>
+          <option value="90" <?= $range===90 ?'selected':'' ?>><i class="far fa-calendar"></i> Last 90 days</option>
         </select>
-        <button class="btn btn-outline btn-sm" onclick="location.reload()"><i class="fas fa-rotate-right"></i> <span class="btn-label">Refresh</span></button>
-        <a href="reports.php" class="btn btn-outline btn-sm"><i class="fas fa-download"></i> <span class="btn-label">Export</span></a>
+        <button class="btn btn-outline btn-sm" onclick="location.reload()" title="Refresh dashboard">
+          <i class="fas fa-sync-alt"></i>
+          <span class="btn-label">Refresh</span>
+        </button>
+        <a href="reports.php" class="btn btn-primary btn-sm" title="Export report">
+          <i class="fas fa-download"></i>
+          <span class="btn-label">Export</span>
+        </a>
       </div>
     </div>
   </div>
 
   <!-- ── KPI STAT CARDS ───────────────────────────────────── -->
-  <div class="stats-row stats-odd">
+  <div class="stats-row">
 
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-blue"><i class="fas fa-calendar-check"></i></div>
+      <div class="stat-widget-icon sw-blue">
+        <i class="fas fa-calendar-check"></i>
+      </div>
       <div class="stat-widget-info">
         <strong><?= number_format($totalAppts) ?></strong>
         <span>Total Appointments</span>
         <div class="stat-change <?= $apptGrowth >= 0 ? 'up' : 'down' ?>">
-          <i class="fas fa-arrow-<?= $apptGrowth >= 0 ? 'up' : 'down' ?>"></i> <?= abs($apptGrowth) ?>% vs last month
+          <i class="fas fa-arrow-<?= $apptGrowth >= 0 ? 'up' : 'down' ?>"></i>
+          <?= abs($apptGrowth) ?>% vs last period
         </div>
       </div>
     </div>
 
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-green"><i class="fas fa-check-circle"></i></div>
+      <div class="stat-widget-icon sw-green">
+        <i class="fas fa-check-circle"></i>
+      </div>
       <div class="stat-widget-info">
         <strong><?= number_format($completedAppts) ?></strong>
         <span>Completed</span>
-        <div class="stat-change up"><i class="fas fa-arrow-up"></i> On track</div>
+        <div class="stat-change up">
+          <i class="fas fa-check"></i>
+          On track
+        </div>
       </div>
     </div>
 
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-orange"><i class="fas fa-clock"></i></div>
+      <div class="stat-widget-icon sw-orange">
+        <i class="fas fa-clock"></i>
+      </div>
       <div class="stat-widget-info">
         <strong><?= $pendingAppts ?></strong>
         <span>Pending Review</span>
         <div class="stat-change <?= $pendingAppts > 5 ? 'down' : 'up' ?>">
-          <i class="fas fa-<?= $pendingAppts > 5 ? 'triangle-exclamation' : 'check' ?>"></i>
           <?= $pendingAppts > 5 ? 'Needs attention' : 'Looks good' ?>
         </div>
       </div>
     </div>
 
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-purple"><i class="fas fa-users"></i></div>
+      <div class="stat-widget-icon sw-purple">
+        <i class="fas fa-users"></i>
+      </div>
       <div class="stat-widget-info">
         <strong><?= number_format($totalUsers) ?></strong>
         <span>Total Users</span>
         <div class="stat-change <?= $userGrowth >= 0 ? 'up' : 'down' ?>">
-          <i class="fas fa-arrow-<?= $userGrowth >= 0 ? 'up' : 'down' ?>"></i> <?= abs($userGrowth) ?>% vs last month
+          <i class="fas fa-arrow-<?= $userGrowth >= 0 ? 'up' : 'down' ?>"></i>
+          <?= abs($userGrowth) ?>% growth
         </div>
       </div>
     </div>
 
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-orange"><i class="fas fa-star"></i></div>
+      <div class="stat-widget-icon sw-orange">
+        <i class="fas fa-star"></i>
+      </div>
       <div class="stat-widget-info">
         <strong><?= $avgRating ?>★</strong>
         <span>Avg Rating</span>
-        <div class="stat-change up"><i class="fas fa-arrow-up"></i> Platform average</div>
+        <div class="stat-change up">
+          Platform average
+        </div>
       </div>
     </div>
 
   </div><!-- /.stats-row -->
 
   <!-- ── SECONDARY STATS ─────────────────────────────────── -->
-  <div class="stats-row" style="margin-bottom:2rem;">
+  <div class="stats-row">
+    
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-blue"><i class="fas fa-hospital"></i></div>
-      <div class="stat-widget-info"><strong><?= $totalClinics ?></strong><span>Active Clinics</span></div>
+      <div class="stat-widget-icon sw-blue">
+        <i class="fas fa-hospital"></i>
+      </div>
+      <div class="stat-widget-info">
+        <strong><?= $totalClinics ?></strong>
+        <span>Active Clinics</span>
+      </div>
     </div>
+    
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-green"><i class="fas fa-user-md"></i></div>
-      <div class="stat-widget-info"><strong><?= $totalVets ?></strong><span>Veterinarians</span></div>
+      <div class="stat-widget-icon sw-green">
+        <i class="fas fa-user-md"></i>
+      </div>
+      <div class="stat-widget-info">
+        <strong><?= $totalVets ?></strong>
+        <span>Veterinarians</span>
+      </div>
     </div>
+    
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-purple"><i class="fas fa-cut"></i></div>
-      <div class="stat-widget-info"><strong><?= $totalGroomers ?></strong><span>Groomers</span></div>
+      <div class="stat-widget-icon sw-purple">
+        <i class="fas fa-cut"></i>
+      </div>
+      <div class="stat-widget-info">
+        <strong><?= $totalGroomers ?></strong>
+        <span>Groomers</span>
+      </div>
     </div>
+    
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-green"><i class="fas fa-paw"></i></div>
-      <div class="stat-widget-info"><strong><?= $totalPets ?></strong><span>Active Pets</span></div>
+      <div class="stat-widget-icon sw-green">
+        <i class="fas fa-paw"></i>
+      </div>
+      <div class="stat-widget-info">
+        <strong><?= $totalPets ?></strong>
+        <span>Active Pets</span>
+      </div>
     </div>
+    
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-blue"><i class="fas fa-calendar-day"></i></div>
-      <div class="stat-widget-info"><strong><?= $todayAppts ?></strong><span>Today's Appts</span></div>
+      <div class="stat-widget-icon sw-blue">
+        <i class="fas fa-calendar-day"></i>
+      </div>
+      <div class="stat-widget-info">
+        <strong><?= $todayAppts ?></strong>
+        <span>Today's Appointments</span>
+      </div>
     </div>
+    
     <div class="stat-widget">
-      <div class="stat-widget-icon sw-red"><i class="fas fa-times-circle"></i></div>
-      <div class="stat-widget-info"><strong><?= $cancelledAppts ?></strong><span>Cancelled</span></div>
+      <div class="stat-widget-icon sw-red">
+        <i class="fas fa-times-circle"></i>
+      </div>
+      <div class="stat-widget-info">
+        <strong><?= $cancelledAppts ?></strong>
+        <span>Cancelled</span>
+      </div>
     </div>
-  </div>
+    
+  </div><!-- /.stats-row -->
 
   <!-- ── CHARTS ROW ────────────────────────────────────────── -->
-  <div class="dash-two-col" style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+  <div class="dash-two-col">
 
     <!-- Appointment Overview Chart -->
     <div class="card">
       <div class="card-header">
-        <h3><i class="fas fa-chart-area" style="color:var(--primary);margin-right:.5rem;"></i>Appointment Overview</h3>
-        <div style="display:flex;align-items:center;gap:1rem;font-size:.8rem;color:var(--text-muted);">
-          <span><span style="display:inline-block;width:10px;height:10px;background:#111;border-radius:50%;margin-right:.3rem;"></span>Total</span>
-          <span><span style="display:inline-block;width:10px;height:10px;background:var(--success);border-radius:50%;margin-right:.3rem;"></span>Completed</span>
+        <h3>
+          <i class="fas fa-chart-line"></i>
+          Appointment Overview
+        </h3>
+        <div class="chart-legend">
+          <span class="legend-item">
+            <span class="legend-dot" style="background:#1F2937"></span>
+            Total
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot" style="background:#10B981"></span>
+            Completed
+          </span>
         </div>
       </div>
       <div class="card-body">
         <?php if($totalAppts > 0): ?>
           <canvas id="mainChart" height="100"></canvas>
         <?php else: ?>
-          <div class="empty-state" style="padding:3rem;text-align:center;">
-            <i class="fas fa-chart-line" style="font-size:2rem;color:var(--text-muted);margin-bottom:1rem;display:block;"></i>
-            <p style="color:var(--text-muted);">No appointment data available yet.</p>
+          <div class="empty-state">
+            <i class="fas fa-chart-line"></i>
+            <h3>No Data Available</h3>
+            <p>Appointment data will appear here once bookings are made.</p>
           </div>
         <?php endif; ?>
       </div>
     </div>
 
-    <!-- Status Split Donut -->
+    <!-- Appointment Status Breakdown -->
     <div class="card">
-      <div class="card-header"><h3><i class="fas fa-chart-pie" style="color:var(--primary);margin-right:.5rem;"></i>Status Split</h3></div>
-      <div class="card-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;min-height:200px;">
+      <div class="card-header">
+        <h3>
+          <i class="fas fa-chart-pie"></i>
+          Appointment Status
+        </h3>
+      </div>
+      <div class="card-body">
         <?php if($totalAppts > 0): ?>
-          <canvas id="donutChart" width="140" height="140"></canvas>
-          <div style="width:100%;display:flex;flex-direction:column;gap:.5rem;font-size:.83rem;">
-            <div style="display:flex;justify-content:space-between;">
-              <span style="color:var(--text-muted);"><i class="fas fa-check" style="color:var(--success);margin-right:.4rem;"></i>Completed</span>
+          <div class="donut-chart-container">
+            <canvas id="donutChart" width="160" height="160"></canvas>
+          </div>
+          <div class="chart-stats">
+            <div class="chart-stat-item">
+              <span class="chart-stat-label">
+                <i class="fas fa-circle" style="color:#10B981"></i>
+                Completed
+              </span>
               <strong><?= $completedAppts ?></strong>
             </div>
-            <div style="display:flex;justify-content:space-between;">
-              <span style="color:var(--text-muted);"><i class="fas fa-clock" style="color:var(--warning);margin-right:.4rem;"></i>Pending</span>
+            <div class="chart-stat-item">
+              <span class="chart-stat-label">
+                <i class="fas fa-circle" style="color:#F59E0B"></i>
+                Pending
+              </span>
               <strong><?= $pendingAppts ?></strong>
             </div>
-            <div style="display:flex;justify-content:space-between;">
-              <span style="color:var(--text-muted);"><i class="fas fa-minus" style="color:var(--text-muted);margin-right:.4rem;"></i>Others</span>
+            <div class="chart-stat-item">
+              <span class="chart-stat-label">
+                <i class="fas fa-circle" style="color:#E2E8F0"></i>
+                Others
+              </span>
               <strong><?= max(0,$totalAppts - $completedAppts - $pendingAppts) ?></strong>
             </div>
           </div>
-          <div style="display:flex;gap:1.5rem;font-size:.78rem;border-top:1px solid var(--border);padding-top:.75rem;width:100%;">
-            <span><span style="display:inline-block;width:10px;height:10px;background:var(--primary);border-radius:50%;margin-right:.3rem;"></span>Veterinary (<?= $vetCount ?>)</span>
-            <span><span style="display:inline-block;width:10px;height:10px;background:var(--warning);border-radius:50%;margin-right:.3rem;"></span>Grooming (<?= $groomCount ?>)</span>
+          <div class="chart-footer">
+            <div class="chart-footer-item">
+              <span class="legend-dot" style="background:#3B82F6"></span>
+              <span>Veterinary: <?= $vetCount ?></span>
+            </div>
+            <div class="chart-footer-item">
+              <span class="legend-dot" style="background:#F59E0B"></span>
+              <span>Grooming: <?= $groomCount ?></span>
+            </div>
           </div>
         <?php else: ?>
-          <div class="empty-state" style="text-align:center;">
-            <i class="fas fa-chart-pie" style="font-size:2rem;color:var(--text-muted);margin-bottom:1rem;display:block;"></i>
-            <p style="color:var(--text-muted);">No appointment data available yet.</p>
+          <div class="empty-state">
+            <i class="fas fa-chart-pie"></i>
+            <h3>No Data Available</h3>
+            <p>Status breakdown will appear here.</p>
           </div>
         <?php endif; ?>
       </div>
     </div>
 
-  </div>
+  </div><!-- /.dash-two-col -->
 
   <!-- ── APPOINTMENTS TABLE ────────────────────────────────── -->
-  <div class="card" style="margin-bottom:1.5rem;">
+  <div class="card">
     <div class="card-header">
-      <h3><i class="fas fa-calendar-days" style="color:var(--primary);margin-right:.5rem;"></i>Appointment Management</h3>
-      <div style="display:flex;gap:.5rem;">
-        <a href="appointments.php" class="btn btn-sm btn-outline">View All</a>
-        <a href="appointments.php?status=pending" class="btn btn-sm btn-primary">
-          Review Pending<?php if($pendingAppts>0): ?> (<?= $pendingAppts ?>)<?php endif; ?>
+      <h3>
+        <i class="fas fa-calendar-check"></i>
+        Appointment Management
+      </h3>
+      <div class="card-header-actions">
+        <?php if($pendingAppts > 0): ?>
+        <a href="appointments.php?status=pending" class="btn btn-primary btn-sm">
+          <i class="fas fa-inbox"></i>
+          Review Pending (<?= $pendingAppts ?>)
+        </a>
+        <?php endif; ?>
+        <a href="appointments.php" class="btn btn-outline btn-sm">
+          View All
         </a>
       </div>
     </div>
+    
+    <!-- Status Filter Tabs -->
+    <div class="table-tabs">
+      <button class="table-tab active" data-status="all">
+        All
+        <span class="tab-count"><?= count($recentAppts) ?></span>
+      </button>
+      <button class="table-tab" data-status="pending">
+        Pending
+        <span class="tab-count"><?= $pendingAppts ?></span>
+      </button>
+      <button class="table-tab" data-status="confirmed">
+        Confirmed
+      </button>
+      <button class="table-tab" data-status="completed">
+        Completed
+      </button>
+      <button class="table-tab" data-status="cancelled">
+        Cancelled
+      </button>
+    </div>
+    
     <div class="table-wrap">
       <?php if($recentAppts): ?>
-      <table>
+      <table class="data-table">
         <thead>
           <tr>
-            <th>Pet</th><th>Owner</th><th>Service</th><th>Clinic</th><th>Date</th><th>Status</th><th>Actions</th>
+            <th>Pet</th>
+            <th>Owner</th>
+            <th>Service</th>
+            <th>Clinic</th>
+            <th>Date & Time</th>
+            <th>Status</th>
+            <th class="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -268,6 +400,7 @@ $recentUsers = $db->query("
             $badgeClass = match($a['status']) {
               'completed'  => 'badge-success',
               'approved'   => 'badge-info',
+              'confirmed'  => 'badge-info',
               'pending'    => 'badge-warning',
               'cancelled'  => 'badge-secondary',
               'rejected'   => 'badge-danger',
@@ -275,16 +408,26 @@ $recentUsers = $db->query("
             };
           ?>
           <tr>
-            <td style="font-weight:600;"><?= sanitize($a['pet_name']) ?></td>
-            <td><?= sanitize($a['owner_name']) ?></td>
-            <td style="font-size:.85rem;"><?= sanitize($a['svc']) ?></td>
-            <td style="font-size:.85rem;"><?= sanitize($a['clinic_name']) ?></td>
             <td>
-              <div style="font-size:.85rem;font-weight:500;"><?= date('M j, Y',strtotime($a['appointment_date'])) ?></div>
-              <div style="font-size:.75rem;color:var(--text-muted);"><?= date('g:i A',strtotime($a['appointment_time'])) ?></div>
+              <div class="table-cell-primary"><?= sanitize($a['pet_name']) ?></div>
             </td>
-            <td><span class="badge <?= $badgeClass ?>"><?= ucfirst($a['status']) ?></span></td>
             <td>
+              <div class="table-cell-secondary"><?= sanitize($a['owner_name']) ?></div>
+            </td>
+            <td>
+              <div class="table-cell-secondary"><?= sanitize($a['svc']) ?></div>
+            </td>
+            <td>
+              <div class="table-cell-secondary"><?= sanitize($a['clinic_name']) ?></div>
+            </td>
+            <td>
+              <div class="table-cell-primary"><?= date('M j, Y', strtotime($a['appointment_date'])) ?></div>
+              <div class="table-cell-meta"><?= date('g:i A', strtotime($a['appointment_time'])) ?></div>
+            </td>
+            <td>
+              <span class="badge <?= $badgeClass ?>"><?= ucfirst($a['status']) ?></span>
+            </td>
+            <td class="text-right">
               <div class="table-actions">
                 <?php include __DIR__ . '/../../includes/appt_actions.php'; ?>
               </div>
@@ -294,9 +437,9 @@ $recentUsers = $db->query("
         </tbody>
       </table>
       <?php else: ?>
-      <div class="empty-state" style="padding:3rem;">
+      <div class="empty-state">
         <i class="fas fa-calendar-xmark"></i>
-        <h3>No appointments yet</h3>
+        <h3>No Appointments Yet</h3>
         <p>Appointments will appear here once users start booking.</p>
       </div>
       <?php endif; ?>
@@ -304,18 +447,28 @@ $recentUsers = $db->query("
   </div>
 
   <!-- ── BOTTOM ROW: Recent Users + Quick Actions ──────────── -->
-  <div class="dash-two-col" style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+  <div class="dash-two-col" style="grid-template-columns: 2fr 1fr;">
 
     <!-- Recent Users -->
     <div class="card">
       <div class="card-header">
-        <h3><i class="fas fa-users" style="color:var(--primary);margin-right:.5rem;"></i>Recent Users</h3>
-        <a href="users.php" class="btn btn-sm btn-outline">Manage All</a>
+        <h3>
+          <i class="fas fa-users"></i>
+          Recent Users
+        </h3>
+        <a href="users.php" class="btn btn-sm btn-outline">View All</a>
       </div>
       <div class="table-wrap">
         <?php if($recentUsers): ?>
-        <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
           <tbody>
             <?php foreach($recentUsers as $u):
               $roleBadge = match($u['role_name']) {
@@ -328,17 +481,26 @@ $recentUsers = $db->query("
               };
             ?>
             <tr>
-              <td style="font-weight:600;"><?= sanitize($u['first_name'].' '.$u['last_name']) ?></td>
-              <td style="font-size:.85rem;color:var(--text-muted);"><?= sanitize($u['email']) ?></td>
-              <td><span class="badge <?= $roleBadge ?>"><?= ucwords(str_replace('_',' ',$u['role_name'])) ?></span></td>
-              <td style="font-size:.8rem;color:var(--text-muted);"><?= timeAgo($u['created_at']) ?></td>
+              <td>
+                <div class="table-cell-primary"><?= sanitize($u['first_name'].' '.$u['last_name']) ?></div>
+              </td>
+              <td>
+                <div class="table-cell-secondary"><?= sanitize($u['email']) ?></div>
+              </td>
+              <td>
+                <span class="badge <?= $roleBadge ?>"><?= displayRoleName($u['role_name']) ?></span>
+              </td>
+              <td>
+                <div class="table-cell-meta"><?= timeAgo($u['created_at']) ?></div>
+              </td>
             </tr>
             <?php endforeach; ?>
           </tbody>
         </table>
         <?php else: ?>
-        <div class="empty-state" style="padding:2rem;">
-          <i class="fas fa-users"></i><h3>No users yet</h3>
+        <div class="empty-state">
+          <i class="fas fa-users"></i>
+          <h3>No Users Yet</h3>
         </div>
         <?php endif; ?>
       </div>
@@ -347,18 +509,41 @@ $recentUsers = $db->query("
     <!-- Quick Actions -->
     <div class="card">
       <div class="card-header">
-        <h3><i class="fas fa-bolt" style="color:var(--warning);margin-right:.5rem;"></i>Quick Actions</h3>
+        <h3>
+          <i class="fas fa-bolt"></i>
+          Quick Actions
+        </h3>
       </div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:.75rem;">
-        <a href="appointments.php?status=pending" class="btn btn-primary btn-block">
-          <i class="fas fa-inbox"></i> Review Pending
-          <?php if($pendingAppts>0): ?><span style="background:rgba(255,255,255,.25);border-radius:50px;padding:0 .5rem;font-size:.78rem;margin-left:.3rem;"><?= $pendingAppts ?></span><?php endif; ?>
-        </a>
-        <a href="users.php" class="btn btn-outline btn-block"><i class="fas fa-user-plus"></i> Manage Users</a>
-        <a href="clinics.php" class="btn btn-outline btn-block"><i class="fas fa-hospital"></i> Manage Clinics</a>
-        <a href="vets.php" class="btn btn-outline btn-block"><i class="fas fa-user-md"></i> Manage Vets</a>
-        <a href="services.php" class="btn btn-outline btn-block"><i class="fas fa-list"></i> Manage Services</a>
-        <a href="reports.php" class="btn btn-outline btn-block"><i class="fas fa-file-arrow-down"></i> Download Report</a>
+      <div class="card-body">
+        <div class="quick-actions">
+          <?php if($pendingAppts > 0): ?>
+          <a href="appointments.php?status=pending" class="btn btn-primary btn-block">
+            <i class="fas fa-inbox"></i>
+            Review Pending
+            <span class="action-badge"><?= $pendingAppts ?></span>
+          </a>
+          <?php endif; ?>
+          <a href="users.php" class="btn btn-outline btn-block">
+            <i class="fas fa-user-plus"></i>
+            Manage Users
+          </a>
+          <a href="clinics.php" class="btn btn-outline btn-block">
+            <i class="fas fa-hospital"></i>
+            Manage Clinics
+          </a>
+          <a href="vets.php" class="btn btn-outline btn-block">
+            <i class="fas fa-user-md"></i>
+            Manage Vets
+          </a>
+          <a href="services.php" class="btn btn-outline btn-block">
+            <i class="fas fa-list"></i>
+            Manage Services
+          </a>
+          <a href="reports.php" class="btn btn-outline btn-block">
+            <i class="fas fa-download"></i>
+            Download Report
+          </a>
+        </div>
       </div>
     </div>
 

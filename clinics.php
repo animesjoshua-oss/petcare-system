@@ -5,9 +5,9 @@ $pageTitle = 'Find Clinics';
 $search  = sanitize($_GET['search'] ?? '');
 $city    = sanitize($_GET['city'] ?? '');
 $service = sanitize($_GET['service'] ?? '');
-$sort    = sanitize($_GET['sort'] ?? 'rating');
+$sort    = sanitize($_GET['sort'] ?? 'name'); // Default to A-Z with custom city order
 $page    = max(1, (int)($_GET['page'] ?? 1));
-$perPage = 12;
+$perPage = 20; // Increased to show all clinics on one page
 
 $where  = ['c.is_active = 1'];
 $params = [];
@@ -16,7 +16,20 @@ if ($search) { $where[] = '(c.name LIKE ? OR c.description LIKE ?)'; $params[] =
 if ($city)   { $where[] = 'c.city = ?'; $params[] = $city; }
 
 $whereStr = 'WHERE ' . implode(' AND ', $where);
-$orderBy  = match($sort) { 'name' => 'c.city ASC, c.name ASC', 'newest' => 'c.created_at DESC', default => 'c.average_rating DESC, c.total_ratings DESC, c.name ASC' };
+
+// Custom city order: Calasiao → Dagupan → San Fabian
+$cityOrder = "CASE 
+    WHEN c.city = 'Calasiao' THEN 1 
+    WHEN c.city = 'Dagupan' THEN 2 
+    WHEN c.city = 'San Fabian' THEN 3 
+    ELSE 4 
+END";
+
+$orderBy  = match($sort) { 
+    'name' => "$cityOrder, c.name ASC", 
+    'newest' => 'c.created_at DESC', 
+    default => 'c.average_rating DESC, c.total_ratings DESC, c.name ASC' 
+};
 
 $totalStmt = getDB()->prepare("SELECT COUNT(*) FROM clinics c $whereStr");
 $totalStmt->execute($params);
@@ -36,16 +49,28 @@ $stmt = getDB()->prepare("
 $stmt->execute($params);
 $clinics = $stmt->fetchAll();
 
-$cities = getDB()->query("SELECT DISTINCT city FROM clinics WHERE is_active=1 AND city IS NOT NULL ORDER BY city")->fetchAll(PDO::FETCH_COLUMN);
+$cities = getDB()->query("
+    SELECT DISTINCT city 
+    FROM clinics 
+    WHERE is_active=1 AND city IS NOT NULL 
+    ORDER BY 
+        CASE 
+            WHEN city = 'Calasiao' THEN 1 
+            WHEN city = 'Dagupan' THEN 2 
+            WHEN city = 'San Fabian' THEN 3 
+            ELSE 4 
+        END, 
+        city
+")->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <?php include __DIR__ . '/includes/header.php'; ?>
 
 <div style="background:var(--bg);min-height:100vh;">
   <!-- Page Header -->
-  <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));padding:3rem 0;color:#fff;text-align:center;">
+  <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));padding:3rem 0;color:#fff !important;text-align:center;">
     <div class="container">
-      <h1 style="font-size:2.25rem;font-weight:800;margin-bottom:.5rem;">Find Clinics in Pangasinan</h1>
-      <p style="opacity:.9;font-size:1rem;">Browse <?= $total ?> verified veterinary and grooming centers</p>
+      <h1 style="font-size:2.25rem;font-weight:800;margin-bottom:.5rem;color:#fff !important;">Find Clinics in Pangasinan</h1>
+      <p style="opacity:.9;font-size:1rem;color:#fff !important;">Browse <?= $total ?> verified veterinary and grooming centers</p>
     </div>
   </div>
 

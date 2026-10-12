@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_reply'])) {
                 if ($orig['user_id']) {
                     createNotification(
                         (int)$orig['user_id'],
-                        '💬 Admin replied to your message',
+                        '💬 Clinic Admin replied to your message',
                         'Your message "' . mb_substr($orig['subject'], 0, 60) . '" has been replied to.',
                         'info',
                         APP_URL . '/dashboard/owner/my-messages.php'

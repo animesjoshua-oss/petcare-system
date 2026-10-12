@@ -125,12 +125,12 @@ if (!empty($operatingHours)) {
   <!-- Cover -->
   <div style="height:280px;background:linear-gradient(135deg,var(--primary),var(--secondary));position:relative;overflow:hidden;">
     <?php if ($clinic['cover_photo']): ?>
-    <img src="/<?= sanitize($clinic['cover_photo']) ?>" style="width:100%;height:100%;object-fit:cover;opacity:.7;" alt="">
+    <img src="<?= APP_URL ?>/<?= sanitize($clinic['cover_photo']) ?>" style="width:100%;height:100%;object-fit:cover;opacity:.7;" alt="">
     <?php endif; ?>
     <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;padding:2rem;">
       <div class="container" style="display:flex;align-items:flex-end;gap:1.5rem;max-width:1200px;">
         <div style="width:80px;height:80px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--primary);flex-shrink:0;box-shadow:var(--shadow);">
-          <?php if ($clinic['logo']): ?><img src="/<?= sanitize($clinic['logo']) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:16px;" alt=""><?php else: ?><i class="fas fa-hospital-alt"></i><?php endif; ?>
+          <?php if ($clinic['logo']): ?><img src="<?= APP_URL ?>/<?= sanitize($clinic['logo']) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:16px;" alt=""><?php else: ?><i class="fas fa-hospital-alt"></i><?php endif; ?>
         </div>
         <div style="color:#fff;">
           <h1 style="font-size:1.75rem;font-weight:800;margin-bottom:.25rem;"><?= sanitize($clinic['name']) ?></h1>
@@ -144,7 +144,7 @@ if (!empty($operatingHours)) {
           <?php if (isLoggedIn() && currentUser()['role_name']==='pet_owner'): ?>
           <a href="<?= APP_URL ?>/dashboard/owner/book.php?clinic=<?= $id ?>&amp;type=<?= $clinicBookingType ?>" class="btn btn-secondary"><i class="fas fa-calendar-plus"></i> Book Now</a>
           <?php else: ?>
-          <a href="register.php" class="btn btn-secondary"><i class="fas fa-calendar-plus"></i> Book Now</a>
+          <a href="<?= APP_URL ?>/auth/register.php" class="btn btn-secondary"><i class="fas fa-calendar-plus"></i> Book Now</a>
           <?php endif; ?>
           <button onclick="toggleFavorite(<?= $id ?>)" class="btn btn-outline-white" id="favBtn">
             <i class="fas fa-heart<?= $isFav?'':'-broken' ?>"></i> <?= $isFav?'Saved':'Save' ?>
@@ -327,7 +327,7 @@ if (!empty($operatingHours)) {
             <?php if (isLoggedIn() && currentUser()['role_name']==='pet_owner'): ?>
             <a href="<?= APP_URL ?>/dashboard/owner/book.php?clinic=<?= $id ?>&amp;type=<?= $clinicBookingType ?>" class="btn" style="background:#fff;color:var(--primary);font-weight:700;width:100%;justify-content:center;">Book Appointment</a>
             <?php else: ?>
-            <a href="register.php" class="btn" style="background:#fff;color:var(--primary);font-weight:700;width:100%;justify-content:center;">Get Started</a>
+            <a href="<?= APP_URL ?>/auth/register.php" class="btn" style="background:#fff;color:var(--primary);font-weight:700;width:100%;justify-content:center;">Get Started</a>
             <?php endif; ?>
           </div>
         </div>
@@ -340,7 +340,7 @@ if (!empty($operatingHours)) {
 
 <script>
 async function toggleFavorite(clinicId) {
-  if (!<?= isLoggedIn() ? 'true' : 'false' ?>) { location.href = '<?= APP_URL ?>/login.php'; return; }
+  if (!<?= isLoggedIn() ? 'true' : 'false' ?>) { location.href = '<?= APP_URL ?>/auth/login.php'; return; }
   try {
     const data = await apiCall('<?= APP_URL ?>/api/favorites.php', 'POST', { clinic_id: clinicId });
     const btn = document.getElementById('favBtn');

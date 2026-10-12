@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_message'])) {
         exit;
     }
 
-    $systemPrompt = "You are AdminAI, an intelligent assistant for PetCare+ Clinic Hub administrators. You help with:
+    $systemPrompt = "You are Clinic AdminAI, an intelligent assistant for PetCare+ Clinic Hub administrators. You help with:
 - Clinic management and operations advice
 - Veterinary staff management guidance
 - Appointment scheduling best practices
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_message'])) {
 
 Be professional, concise, and helpful. Format responses clearly with bullet points when listing items.";
 
-    $ai = callGroq("{$systemPrompt}\n\nAdmin asks: {$message}", 800);
+    $ai = callGroq("{$systemPrompt}\n\nClinic Admin asks: {$message}", 800);
     echo json_encode(['success' => $ai['success'], 'text' => $ai['text']]);
     exit;
 }
@@ -43,7 +43,7 @@ Be professional, concise, and helpful. Format responses clearly with bullet poin
       <i class="fas fa-chevron-right" style="font-size:.65rem"></i>
       <span>AI Assistant</span>
     </div>
-    <h1><i class="fas fa-robot" style="color:var(--primary)"></i> AdminAI Assistant</h1>
+    <h1><i class="fas fa-robot" style="color:var(--primary)"></i> Clinic AdminAI Assistant</h1>
     <p>Your intelligent assistant for clinic management and veterinary operations.</p>
   </div>
 
@@ -59,7 +59,7 @@ Be professional, concise, and helpful. Format responses clearly with bullet poin
     'Staff training recommendations',
   ];
   $aiWelcomeHtml = '
-    <p>👋 Hello, <strong>'.sanitize($user['first_name']).'</strong>! I\'m <strong>AdminAI</strong>, your clinic management assistant.</p>
+    <p>👋 Hello, <strong>'.sanitize($user['first_name']).'</strong>! I\'m <strong>Clinic AdminAI</strong>, your clinic management assistant.</p>
     <p style="margin-top:.5rem;">I can help you with:</p>
     <ul style="margin:.4rem 0 0 1.2rem;font-size:.875rem;">
       <li>Clinic operations and management advice</li>

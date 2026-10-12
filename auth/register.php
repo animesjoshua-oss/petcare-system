@@ -171,7 +171,7 @@ $idTypes = [
 
     <div class="auth-logo">
       <?php $logoBase = APP_URL; ?>
-      <img src="<?= $logoBase ?>/assets/logo/petcare.png" alt="PetCare+" class="auth-logo-img">
+      <img src="<?= $logoBase ?>/assets/images/logo.png" alt="PetCare+" class="auth-logo-img">
     </div>
 
     <div class="card auth-card<?= $errors ? ' auth-card--shake' : '' ?>">
@@ -192,13 +192,13 @@ $idTypes = [
           </div>
           <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:.5rem;">Account Pending Approval</h2>
           <p style="color:var(--text-muted);font-size:.9rem;line-height:1.7;margin-bottom:1.5rem;">
-            Your account and ID are now being reviewed by our admin team.<br><br>
+            Your account and ID are now being reviewed by our Clinic Admin team.<br><br>
             <strong>What happens next?</strong>
           </p>
           <div style="text-align:left;background:rgba(30,64,255,.05);border:1px solid rgba(30,64,255,.15);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;">
             <div style="display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.75rem;">
               <i class="fas fa-search" style="color:var(--primary);margin-top:.15rem;"></i>
-              <span style="font-size:.875rem;">Admin reviews your submitted ID photo and verifies your information</span>
+              <span style="font-size:.875rem;">Clinic Admin reviews your submitted ID photo and verifies your information</span>
             </div>
             <div style="display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.75rem;">
               <i class="fas fa-check-circle" style="color:var(--success);margin-top:.15rem;"></i>
@@ -276,7 +276,7 @@ $idTypes = [
               <i class="fas fa-id-card"></i> Government ID Verification <span class="required">*</span>
             </p>
             <p class="reg-id-desc">
-              Required for account security. Admin will verify your ID before activating your account.
+              Required for account security. Clinic Admin will verify your ID before activating your account.
             </p>
 
             <div class="form-group">
@@ -343,7 +343,7 @@ $idTypes = [
 
               <p class="id-upload-note">
                 <i class="fas fa-lock" style="color:var(--success);"></i>
-                JPG, PNG, WEBP · Max 5 MB each · Make sure all text is clearly visible. Stored securely, visible only to admins.
+                JPG, PNG, WEBP · Max 5 MB each · Make sure all text is clearly visible. Stored securely, visible only to Clinic Admins.
               </p>
             </div>
           </div><!-- /.reg-id-section -->

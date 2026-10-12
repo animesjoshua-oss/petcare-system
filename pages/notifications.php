@@ -6,7 +6,11 @@ $pageTitle = 'Notifications';
 $db = getDB();
 
 // Mark all read
-if (isset($_GET['mark_all'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_all'])) {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        http_response_code(403);
+        exit('Invalid request. Please refresh the page and try again.');
+    }
     $db->prepare('UPDATE notifications SET is_read=1 WHERE user_id=?')->execute([$user['id']]);
     header('Location: notifications.php'); exit;
 }
@@ -19,7 +23,7 @@ $notifs->execute([$user['id']]); $notifs=$notifs->fetchAll();
   <div class="container" style="padding:1.5rem;max-width:700px;padding-top:1.5rem;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
       <h1 style="font-size:1.5rem;font-weight:700;">Notifications</h1>
-      <?php if ($notifs): ?><a href="?mark_all=1" class="btn btn-sm btn-outline"><i class="fas fa-check-double"></i> Mark all read</a><?php endif; ?>
+      <?php if ($notifs): ?><form method="POST" style="display:inline"><?= csrfField() ?><button type="submit" name="mark_all" value="1" class="btn btn-sm btn-outline"><i class="fas fa-check-double"></i> Mark all read</button></form><?php endif; ?>
     </div>
     <div class="card">
       <?php if ($notifs): foreach ($notifs as $n): ?>

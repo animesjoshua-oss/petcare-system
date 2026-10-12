@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="booking-pet-row">
             <?php foreach ($myPets as $pet): ?>
             <label style="cursor:pointer;">
-              <input type="radio" name="pet_id" value="<?= $pet['id'] ?>" required style="display:none;" class="pet-radio" <?= $prePet === (int)$pet['id'] ? 'checked' : '' ?>>
+              <input type="radio" name="pet_id" value="<?= $pet['id'] ?>" style="display:none;" class="pet-radio" <?= $prePet === (int)$pet['id'] ? 'checked' : '' ?>>
               <div class="pet-select-card">
                 <?php if (!empty($pet['photo'])): ?>
                   <img src="<?= assetUrl($pet['photo']) ?>"
@@ -326,7 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </p>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-calendar-check"></i> Confirm Booking</button>
+        <button type="submit" class="btn btn-primary btn-lg" id="confirmBookingBtn"><i class="fas fa-calendar-check"></i> Confirm Booking</button>
       </form>
     </div>
   </div>
@@ -540,70 +540,83 @@ function renderServices() {
   }
 }
 
-// ── Inline form validation (no alert()) ──────────────────────────
-document.getElementById('bookForm').addEventListener('submit', function(e) {
-  const errors = [];
-  if (!document.querySelector('.pet-radio:checked'))     errors.push('Please select a pet.');
-  if (!document.getElementById('clinicSelect').value)    errors.push('Please select a clinic.');
-  if (!document.getElementById('apptDate').value)        errors.push('Please pick a preferred date.');
-  if (!document.getElementById('apptTime').value)        errors.push('Please select a preferred time.');
+// ── Wait for DOM to be ready ────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  
+  // ── Inline form validation ─────────────────────────────────────
+  const bookForm = document.getElementById('bookForm');
+  if (bookForm) {
+    bookForm.addEventListener('submit', function(e) {
+      const errors = [];
+      if (!document.querySelector('.pet-radio:checked'))     errors.push('Please select a pet.');
+      if (!document.getElementById('clinicSelect').value)    errors.push('Please select a clinic.');
+      if (!document.getElementById('apptDate').value)        errors.push('Please pick a preferred date.');
+      if (!document.getElementById('apptTime').value)        errors.push('Please select a preferred time.');
 
-  // Block if date is a closed day
-  const dateVal = document.getElementById('apptDate').value;
-  if (dateVal && Object.keys(clinicHours).length) {
-    const dateParts = dateVal.split('-').map(Number);
-    const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-    const dayKey = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][d.getDay()];
-    const info = clinicHours[dayKey] || clinicHours[dayKey.substring(0,3)] || null;
-    if (!info || info.closed || info === 'closed') {
-      errors.push('The selected date is a closed day for this clinic.');
-    }
-  }
+      // Block if date is a closed day
+      const dateVal = document.getElementById('apptDate').value;
+      if (dateVal && Object.keys(clinicHours).length) {
+        const dateParts = dateVal.split('-').map(Number);
+        const d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+        const dayKey = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][d.getDay()];
+        const info = clinicHours[dayKey] || clinicHours[dayKey.substring(0,3)] || null;
+        if (!info || info.closed || info === 'closed') {
+          errors.push('The selected date is a closed day for this clinic.');
+        }
+      }
 
-  if (errors.length) {
-    e.preventDefault();
-    const old = document.getElementById('clientValidationAlert');
-    if (old) old.remove();
-    const alertEl = document.createElement('div');
-    alertEl.id        = 'clientValidationAlert';
-    alertEl.className = 'alert alert-danger';
-    alertEl.style.marginBottom = '1.25rem';
-    alertEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> <strong>Please fix the following:</strong>'
-      + '<ul style="margin:.5rem 0 0 1.25rem;">'
-      + errors.map(err => `<li>${err}</li>`).join('')
-      + '</ul>';
-    document.getElementById('bookForm').prepend(alertEl);
-    alertEl.scrollIntoView({ behavior:'smooth', block:'center' });
-  }
-});
-
-// ── Pet radio card interaction ────────────────────────────────────
-document.querySelectorAll('.pet-radio').forEach(r => {
-  r.addEventListener('change', () => {
-    document.querySelectorAll('.pet-select-card').forEach(c => {
-      c.style.borderColor = 'var(--border)';
-      c.style.background  = '';
+      if (errors.length) {
+        e.preventDefault();
+        const old = document.getElementById('clientValidationAlert');
+        if (old) old.remove();
+        const alertEl = document.createElement('div');
+        alertEl.id        = 'clientValidationAlert';
+        alertEl.className = 'alert alert-danger';
+        alertEl.style.marginBottom = '1.25rem';
+        alertEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> <strong>Please fix the following:</strong>'
+          + '<ul style="margin:.5rem 0 0 1.25rem;">'
+          + errors.map(err => `<li>${err}</li>`).join('')
+          + '</ul>';
+        bookForm.prepend(alertEl);
+        alertEl.scrollIntoView({ behavior:'smooth', block:'center' });
+      }
     });
-    r.nextElementSibling.style.borderColor = 'var(--primary)';
-    r.nextElementSibling.style.background  = 'rgba(30,64,255,.06)';
-    updateSteps();
+  }
+
+  // ── Pet radio card interaction ──────────────────────────────────
+  document.querySelectorAll('.pet-radio').forEach(r => {
+    r.addEventListener('change', () => {
+      document.querySelectorAll('.pet-select-card').forEach(c => {
+        c.style.borderColor = 'var(--border)';
+        c.style.background  = '';
+      });
+      r.nextElementSibling.style.borderColor = 'var(--primary)';
+      r.nextElementSibling.style.background  = 'rgba(30,64,255,.06)';
+      updateSteps();
+    });
   });
-});
-document.querySelector('.pet-radio:checked')?.dispatchEvent(new Event('change'));
+  document.querySelector('.pet-radio:checked')?.dispatchEvent(new Event('change'));
 
-// Date change — check operating hours
-document.getElementById('apptDate')?.addEventListener('change', function() {
-  checkDateAvailability(this.value);
-  updateSteps();
-});
-document.getElementById('apptTime')?.addEventListener('change', updateSteps);
+  // Date change — check operating hours
+  const apptDate = document.getElementById('apptDate');
+  if (apptDate) {
+    apptDate.addEventListener('change', function() {
+      checkDateAvailability(this.value);
+      updateSteps();
+    });
+  }
+  
+  const apptTime = document.getElementById('apptTime');
+  if (apptTime) {
+    apptTime.addEventListener('change', updateSteps);
+  }
 
-// ── Auto-load if clinic pre-selected ─────────────────────────────
-(function() {
+  // ── Auto-load if clinic pre-selected ───────────────────────────
   const sel = document.getElementById('clinicSelect');
   if (sel && sel.value) loadClinicData(sel.value);
   updateSteps();
-})();
+  
+});
 </script>
 
 <style>

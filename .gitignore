@@ -1,0 +1,64 @@
+# PetCare+ .gitignore
+# Don't commit sensitive or unnecessary files
+
+# Sensitive config
+includes/config.php
+.env
+includes/local-secrets.php
+
+# Composer
+/vendor/
+composer.lock
+
+# User uploads (don't commit user photos to git)
+/uploads/*
+!/uploads/.gitkeep
+
+# Logs
+/storage/logs/*.log
+*.log
+
+# Cache
+/storage/cache/*
+!/storage/cache/.gitkeep
+
+# OS files (Mac/Windows)
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Backup files
+*.bak
+*.backup
+*.sql.gz
+
+# Node modules (if we ever add npm)
+node_modules/
+package-lock.json
+
+# Local environment
+.xampp/
+.htaccess.local
+
+# Test files
+/tests/temp/
+phpunit.xml
+
+# Documentation drafts
+*.draft.md
+
+# Personal notes
+TODO.txt
+SCRATCH.txt

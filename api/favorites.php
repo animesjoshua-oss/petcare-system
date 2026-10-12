@@ -3,7 +3,17 @@ require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
 
 header('Content-Type: application/json');
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if ($method !== 'POST') {
+    header('Allow: POST');
+    jsonResponse(['error' => 'Method not allowed.'], 405);
+}
 $data = json_decode(file_get_contents('php://input'), true);
+if (!is_array($data)) $data = $_POST;
+$csrf = (string)($data['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+if (!verifyCsrfToken($csrf)) {
+    jsonResponse(['error' => 'Invalid CSRF token.'], 403);
+}
 $clinicId = (int)($data['clinic_id'] ?? 0);
 $userId   = $_SESSION['user_id'];
 $db       = getDB();

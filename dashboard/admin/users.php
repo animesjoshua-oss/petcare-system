@@ -287,7 +287,7 @@ $roles=$db->query('SELECT * FROM roles ORDER BY id')->fetchAll();
           </td>
           <td style="vertical-align:middle;">
             <span class="badge badge-<?= $u['role_name']==='pet_owner'?'primary':($u['role_name']==='veterinarian'?'success':($u['role_name']==='groomer'?'warning':'danger')) ?>">
-              <?= ucfirst(str_replace('_',' ',$u['role_name'])) ?>
+              <?= displayRoleName($u['role_name']) ?>
             </span>
           </td>
           <td style="vertical-align:middle;">
@@ -665,7 +665,7 @@ function accountReactivatedEmailHtml(string $firstName): string {
           <td style="padding:36px;">
             <p style="font-size:1rem;color:#1E293B;margin-bottom:.5rem;">Hi <strong>{$firstName}</strong> 👋</p>
             <p style="font-size:.9rem;color:#64748B;line-height:1.8;margin-bottom:1.5rem;">
-              Great news! Your PetCare+ account has been <strong>reactivated</strong> by our admin team.
+              Great news! Your PetCare+ account has been <strong>reactivated</strong> by our Clinic Admin team.
               You can now log in and continue managing your pet's appointments.
             </p>
             <div style="text-align:center;margin:24px 0;">
@@ -711,7 +711,7 @@ function bookingRestoredEmailHtml(string $firstName): string {
           <td style="padding:36px;">
             <p style="font-size:1rem;color:#1E293B;margin-bottom:.5rem;">Hi <strong>{$firstName}</strong> 👋</p>
             <p style="font-size:.9rem;color:#64748B;line-height:1.8;margin-bottom:1.5rem;">
-              Your booking access on PetCare+ has been <strong>fully restored</strong> by our admin team.
+              Your booking access on PetCare+ has been <strong>fully restored</strong> by our Clinic Admin team.
               You can now make new appointments for your pets again.
             </p>
             <div style="background:#ECFDF5;border-left:4px solid #10B981;border-radius:8px;

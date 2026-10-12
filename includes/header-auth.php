@@ -10,14 +10,6 @@ require_once __DIR__ . '/functions.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= isset($pageTitle) ? sanitize($pageTitle) . ' – ' : '' ?><?= APP_NAME ?></title>
     <meta name="description" content="PetCare+ Clinic Hub – Find veterinary clinics and grooming centers in Pangasinan, Philippines.">
-    <!-- PWA -->
-    <meta name="theme-color" content="#00D4AA">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="PetCare+">
-    <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
-    <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/logo/petcare-192.png">
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

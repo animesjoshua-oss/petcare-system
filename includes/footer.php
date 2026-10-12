@@ -53,9 +53,7 @@ $footerIsDashboard = isset($isDashboard) && $isDashboard;
 </footer>
 <?php endif; // !$footerIsDashboard ?>
 
-<!-- Main JS -->
-<script src="<?= APP_URL ?>/assets/js/main.js?v=<?= time() ?>"></script>
-<?= isset($extraJs) ? $extraJs : '' ?>
+
 
 <?php if (isset($isDashboard) && $isDashboard):
   $u    = currentUser();
@@ -263,59 +261,7 @@ $footerIsDashboard = isset($isDashboard) && $isDashboard;
 
 <?php endif; // end if ($user) ?>
 
-<!-- ======= PWA: Service Worker Registration ======= -->
-<script>
-(function() {
-  if (!('serviceWorker' in navigator)) return;
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('<?= APP_URL ?>/sw.js', { scope: '<?= APP_URL ?>/' })
-      .then(function(reg) { reg.update(); })
-      .catch(function(err) { console.warn('[PWA] SW failed:', err); });
-  });
 
-  var deferredPrompt = null;
-  var installBanner  = document.getElementById('pwaInstallBanner');
-  var installBtn     = document.getElementById('pwaInstallBtn');
-  var dismissBtn     = document.getElementById('pwaInstallDismiss');
-
-  window.addEventListener('beforeinstallprompt', function(e) {
-    e.preventDefault(); deferredPrompt = e;
-    if (installBanner) installBanner.style.display = 'flex';
-  });
-  if (installBtn) {
-    installBtn.addEventListener('click', function() {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(function() {
-        deferredPrompt = null;
-        if (installBanner) installBanner.style.display = 'none';
-      });
-    });
-  }
-  if (dismissBtn) {
-    dismissBtn.addEventListener('click', function() {
-      if (installBanner) installBanner.style.display = 'none';
-      deferredPrompt = null;
-    });
-  }
-  window.addEventListener('appinstalled', function() {
-    if (installBanner) installBanner.style.display = 'none';
-    deferredPrompt = null;
-  });
-})();
-</script>
-
-<!-- PWA Install Banner -->
-<?php $pwaLogoUrl = rtrim(str_replace(' ', '%20', APP_URL), '/') . '/assets/logo/petcare.png'; ?>
-<div id="pwaInstallBanner" style="display:none;position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#0f2137;border:1px solid #00D4AA;border-radius:12px;padding:0.85rem 1.25rem;align-items:center;gap:0.75rem;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.4);min-width:280px;max-width:90vw;font-family:'Poppins',sans-serif;">
-  <img src="<?= $pwaLogoUrl ?>" alt="PetCare+" style="width:40px;height:40px;border-radius:10px;flex-shrink:0;object-fit:contain;background:#081d35;padding:3px;">
-  <div style="flex:1;min-width:0;">
-    <div style="font-weight:600;color:#e2e8f0;font-size:0.88rem;line-height:1.3;">Install PetCare+</div>
-    <div style="color:#94a3b8;font-size:0.78rem;">Add to home screen for quick access</div>
-  </div>
-  <button id="pwaInstallBtn" style="background:#00D4AA;color:#081221;border:none;padding:0.45rem 1rem;border-radius:7px;font-weight:600;font-size:0.82rem;cursor:pointer;font-family:inherit;flex-shrink:0;">Install</button>
-  <button id="pwaInstallDismiss" style="background:transparent;border:none;color:#64748b;cursor:pointer;font-size:1.1rem;padding:0 0.25rem;line-height:1;flex-shrink:0;" aria-label="Dismiss">✕</button>
-</div>
 
 </body>
 </html>

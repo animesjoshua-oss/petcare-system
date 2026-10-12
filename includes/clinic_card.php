@@ -27,18 +27,36 @@ function renderClinicCard($clinic, $showRemoveFav = false) {
     // Cover photo or placeholder
     $coverPhoto = '';
     $knownCovers = [
-        "d&r"          => 'https://petcare.yzz.me/assets/logo/D&R.jpg',
-        'every paw'    => 'https://petcare.yzz.me/assets/logo/evey.jpg',
-        'nose to tail' => 'https://petcare.yzz.me/assets/logo/NTTVC.jpg',
-        'paws & purrs' => 'https://petcare.yzz.me/assets/logo/paws.jpg',
+        "d&r"          => 'assets/images/clinics/DR.jpg',
+        'every'        => 'assets/images/clinics/evey.jpg',
+        'nose to tail' => 'assets/images/clinics/NTTVC.jpg',
+        'paws & purrs' => 'assets/images/clinics/paws.jpg',
+        'paws'         => 'assets/images/clinics/paws.jpg',
+        'mjm'          => 'assets/images/clinics/mjm.png',
+        'amado'        => 'assets/images/clinics/Amado.jpg',
+        'animal life'  => 'assets/images/clinics/Amado.jpg',
+        'petdocs'      => 'assets/images/clinics/Petdocs.jpg',
+        'petdoctor'    => 'assets/images/clinics/Petdocs.jpg',
+        'saint'        => 'assets/images/clinics/saint.png',
+        'st. francis'  => 'assets/images/clinics/saint.png',
+        'st. martin'   => 'assets/images/clinics/saint.png',
+        'francis'      => 'assets/images/clinics/saint.png',
+        'martin'       => 'assets/images/clinics/saint.png',
+        'rural'        => 'assets/images/clinics/ruralvet.png',
+        'elegance'     => 'assets/images/clinics/ruralvet.png',
+        'petally'      => 'assets/images/clinics/petally.png',
+        'protect'      => 'assets/images/clinics/Protect.png',
     ];
     $matchedCover = null;
     foreach ($knownCovers as $keyword => $path) {
-        if (str_contains($clName, $keyword)) { $matchedCover = $path; break; }
+        if (str_contains($clName, $keyword)) { 
+            $matchedCover = APP_URL . '/' . $path; 
+            break; 
+        }
     }
 
     if (!empty($clinic['cover_photo'])) {
-        $imgSrc = (str_starts_with($clinic['cover_photo'], 'http') || str_starts_with($clinic['cover_photo'], '/'))
+        $imgSrc = str_starts_with($clinic['cover_photo'], 'http')
             ? sanitize($clinic['cover_photo'])
             : APP_URL . '/' . ltrim(sanitize($clinic['cover_photo']), '/');
         $coverPhoto = '<img src="' . $imgSrc . '" alt="" style="width:100%;height:100%;object-fit:cover;">';
@@ -57,10 +75,13 @@ HTML;
     // Logo overlay
     $logo = '';
     if (!empty($clinic['logo'])) {
-        $logoSrc = (str_starts_with($clinic['logo'], 'http') || str_starts_with($clinic['logo'], '/'))
+        $logoSrc = str_starts_with($clinic['logo'], 'http')
             ? sanitize($clinic['logo'])
             : APP_URL . '/' . ltrim(sanitize($clinic['logo']), '/');
         $logo = '<img src="' . $logoSrc . '" style="position:absolute;bottom:.75rem;left:.75rem;width:44px;height:44px;border-radius:50%;border:2px solid #fff;object-fit:cover;" alt="logo">';
+    } else {
+        // Default placeholder logo if none provided
+        $logo = '<div style="position:absolute;bottom:.75rem;left:.75rem;width:44px;height:44px;border-radius:50%;border:2px solid #fff;background:#fff;display:flex;align-items:center;justify-content:center;"><i class="fas ' . $clinicIcon . '" style="font-size:1.2rem;color:var(--primary)"></i></div>';
     }
     
     // Phone
@@ -76,9 +97,7 @@ HTML;
         foreach (array_slice($serviceTags, 0, 4) as $serviceTag) {
             $tags .= '<span class="clinic-tag">' . sanitize($serviceTag) . '</span>';
         }
-        if (count($serviceTags) > 4) {
-            $tags .= '<span class="clinic-tag">+' . (count($serviceTags) - 4) . ' more</span>';
-        }
+        // Removed "+X more" counter completely
     } else {
         $tags .= '<span class="clinic-tag">Veterinary services</span>';
     }
@@ -87,12 +106,18 @@ HTML;
     // Action buttons
     $actions = '';
     if ($showRemoveFav) {
-        $removeUrl = '?remove=' . $clinic['id'] . '&csrf=' . generateCsrfToken();
         $viewUrl = APP_URL . '/pages/clinic.php?id=' . $clinic['id'];
+        $removeToken = generateCsrfToken();
+        $removeId = (int)$clinic['id'];
+        $removeAction = APP_URL . '/dashboard/owner/favorites.php';
         $actions = <<<HTML
 <div style="display:flex;gap:.4rem;">
   <a href="{$viewUrl}" class="btn btn-sm btn-outline">View</a>
-  <a href="{$removeUrl}" class="btn btn-sm btn-danger" data-confirm="Remove from favorites?"><i class="fas fa-heart-broken"></i></a>
+  <form method="POST" action="{$removeAction}" style="display:inline" onsubmit="return confirm('Remove from favorites?')">
+    <input type="hidden" name="csrf_token" value="{$removeToken}">
+    <input type="hidden" name="remove" value="{$removeId}">
+    <button type="submit" class="btn btn-sm btn-danger" aria-label="Remove from favorites"><i class="fas fa-heart-broken"></i></button>
+  </form>
 </div>
 HTML;
     }

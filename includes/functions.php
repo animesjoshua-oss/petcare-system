@@ -108,6 +108,17 @@ function redirectByRole(): void {
     exit;
 }
 
+function displayRoleName(string $roleName): string {
+    return match($roleName) {
+        'admin'        => 'Clinic Admin',
+        'superadmin'   => 'Superadmin',
+        'pet_owner'    => 'Pet Owner',
+        'veterinarian' => 'Veterinarian',
+        'groomer'      => 'Groomer',
+        default        => ucfirst(str_replace('_', ' ', $roleName))
+    };
+}
+
 // ---- File Upload ----
 
 function uploadFile(array $file, string $subdir = 'misc'): ?string {

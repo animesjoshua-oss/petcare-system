@@ -13,16 +13,8 @@ $isDashboard = isset($isDashboard) ? (bool)$isDashboard : (strpos($scriptPath, '
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= isset($pageTitle) ? sanitize($pageTitle) . ' – ' : '' ?><?= APP_NAME ?></title>
     <meta name="description" content="PetCare+ Clinic Hub – Find veterinary clinics and grooming centers in Pangasinan, Philippines.">
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#00D4AA">
     <meta name="app-url" content="<?= rtrim(str_replace(' ', '%20', APP_URL), '/') ?>">
     <meta name="csrf-token" content="<?= sanitize(generateCsrfToken()) ?>">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="PetCare+">
-    <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
-    <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/logo/petcare-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Apply dark mode IMMEDIATELY — before ANY CSS loads to prevent flash -->
@@ -67,7 +59,7 @@ $isDashboard = isset($isDashboard) ? (bool)$isDashboard : (strpos($scriptPath, '
         <!-- Logo -->
         <?php $logoBase = APP_URL; ?>
         <a href="<?= APP_URL ?>/index.php" class="nav-logo">
-            <img src="<?= $logoBase ?>/assets/logo/petcare.png" alt="PetCare+" class="nav-logo-img">
+            <img src="<?= $logoBase ?>/assets/images/logo.png" alt="PetCare+" class="nav-logo-img">
             <span class="logo-text">PetCare<span class="logo-plus">+</span></span>
         </a>
 
@@ -393,8 +385,10 @@ $isDashboard = isset($isDashboard) ? (bool)$isDashboard : (strpos($scriptPath, '
     list.querySelectorAll('.notif-dp-item').forEach(function(el) {
       el.addEventListener('click', function() {
         var id = el.dataset.id;
-        fetch('<?= APP_URL ?>/api/notifications.php?action=mark_read&id=' + id, {
-          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        fetch('<?= APP_URL ?>/api/notifications.php?action=mark_read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
+          body: JSON.stringify({ id: id })
         });
         el.classList.remove('unread');
         var dot = el.querySelector('.notif-dp-unread-dot');
@@ -482,7 +476,9 @@ $isDashboard = isset($isDashboard) ? (bool)$isDashboard : (strpos($scriptPath, '
   markAll && markAll.addEventListener('click', function(e) {
     e.stopPropagation();
     fetch('<?= APP_URL ?>/api/notifications.php?action=mark_read', {
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
+      body: JSON.stringify({})
     });
     list.querySelectorAll('.notif-dp-item').forEach(function(el) {
       el.classList.remove('unread');

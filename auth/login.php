@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_login'])) {
     <!-- Logo -->
     <?php $logoBase = APP_URL; ?>
     <div class="auth-logo">
-      <img src="<?= $logoBase ?>/assets/logo/petcare.png" alt="PetCare+" class="auth-logo-img">
+      <img src="<?= $logoBase ?>/assets/images/logo.png" alt="PetCare+" class="auth-logo-img">
     </div>
 
     <div class="card auth-card<?= $error ? ' auth-card--shake' : '' ?>">

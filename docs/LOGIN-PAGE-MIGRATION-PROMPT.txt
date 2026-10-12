@@ -1,0 +1,683 @@
+============================================================
+PETCARE+ LOGIN PAGE - COMPLETE LARAVEL MIGRATION PROMPT
+============================================================
+
+## CURRENT LOGIN IMPLEMENTATION (auth/login.php)
+
+### AUTHENTICATION FLOW:
+
+STEP 1: Email + Password Validation
+  - User submits email and password
+  - System checks if account exists
+  - Validates password hash (BCrypt cost=12)
+
+STEP 2: Account Status Checks
+  - Check if account is locked (locked_until timestamp)
+  - If locked and time not expired → Show countdown timer
+  - If lock expired → Clear locked_until field
+  - Check is_active flag (0 = pending approval, 1 = approved)
+  - If inactive → Show "pending admin approval" message
+
+STEP 3: Failed Login Tracking
+  - On wrong password: Increment failed_login_attempts
+  - After 5 failed attempts: Set locked_until = now + 5 minutes
+  - On successful login: Reset failed_login_attempts to 0
+
+STEP 4: Role-Based OTP Requirement
+  - Pet owners (role: pet_owner) → REQUIRE OTP verification
+  - Admin/Vet/Groomer → SKIP OTP, login directly
+  
+  For pet owners:
+    - Generate 6-digit OTP
+    - Hash OTP with password_hash()
+    - Store in session: otp_code, otp_expires (10 minutes)
+    - Store user ID in session: login_otp_user_id
+    - Send OTP email via PHPMailer
+    - Redirect to OTP verification page
+
+  For staff (admin/vet/groomer):
+    - Create session directly: $_SESSION['user_id']
+    - Update last_login timestamp
+    - Redirect by role to appropriate dashboard
+
+STEP 5: OTP Verification (For Pet Owners Only)
+  - User enters 6-digit OTP
+  - System verifies with password_verify() against session hash
+  - Check if OTP expired (10 minutes limit)
+  - If valid: Login user, clear OTP from session
+  - If invalid: Show error, allow retry
+  - Resend OTP option available
+
+STEP 6: Role-Based Redirect
+  - pet_owner → /dashboard/owner/index.php
+  - veterinarian → /dashboard/vet/index.php
+  - groomer → /dashboard/groomer/index.php
+  - admin/superadmin → /dashboard/admin/index.php
+
+
+============================================================
+DATABASE SCHEMA (users table)
+============================================================
+
+Fields needed:
+  - id (primary key)
+  - role_id (foreign key to roles table)
+  - email (unique)
+  - password_hash (BCrypt)
+  - is_active (tinyint: 0=pending, 1=approved)
+  - is_email_verified (tinyint: 0=not verified, 1=verified)
+  - failed_login_attempts (tinyint, default 0)
+  - locked_until (datetime, nullable)
+  - last_login (datetime, nullable)
+  - created_at, updated_at
+
+
+============================================================
+LARAVEL CONVERSION - CONTROLLERS
+============================================================
+
+File: app/Http/Controllers/Auth/LoginController.php
+
+public function showLoginForm()
+{
+    // Show login page (resources/views/auth/login.blade.php)
+    return view('auth.login');
+}
+
+public function login(Request $request)
+{
+    // 1. Validate email + password
+    $credentials = $request->validate([
+        'email' => 'required|email',
+        'password' => 'required|string',
+    ]);
+
+    // 2. Find user by email
+    $user = User::where('email', $credentials['email'])->first();
+
+    if (!$user) {
+        return back()->withErrors(['email' => 'Invalid email or password.']);
+    }
+
+    // 3. Check account lockout
+    if ($user->locked_until && now()->lt($user->locked_until)) {
+        return back()->withErrors([
+            'lockout' => 'Account locked. Try again in ' . 
+                         now()->diffInSeconds($user->locked_until) . ' seconds.'
+        ])->with('lockout_timestamp', $user->locked_until->timestamp);
+    }
+
+    // 4. Clear expired lockout
+    if ($user->locked_until && now()->gte($user->locked_until)) {
+        $user->update([
+            'locked_until' => null,
+            'failed_login_attempts' => 0
+        ]);
+    }
+
+    // 5. Verify password
+    if (!Hash::check($credentials['password'], $user->password_hash)) {
+        // Increment failed attempts
+        $attempts = $user->failed_login_attempts + 1;
+        
+        if ($attempts >= 5) {
+            $user->update([
+                'failed_login_attempts' => $attempts,
+                'locked_until' => now()->addMinutes(5)
+            ]);
+            return back()->withErrors([
+                'lockout' => 'Too many failed attempts. Account locked for 5 minutes.'
+            ])->with('lockout_timestamp', $user->locked_until->timestamp);
+        }
+        
+        $user->increment('failed_login_attempts');
+        $remaining = 5 - $attempts;
+        return back()->withErrors([
+            'password' => "Invalid password. $remaining attempt(s) remaining."
+        ]);
+    }
+
+    // 6. Check if account is active
+    if (!$user->is_active) {
+        return back()->withErrors([
+            'inactive' => 'Your account is pending admin approval. 
+                          You will be notified by email once approved.'
+        ]);
+    }
+
+    // 7. Reset failed attempts on success
+    $user->update(['failed_login_attempts' => 0, 'locked_until' => null]);
+
+    // 8. Role-based OTP logic
+    if ($user->role->name === 'pet_owner') {
+        // Generate OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        
+        // Store in session
+        session([
+            'login_otp_user_id' => $user->id,
+            'otp_code' => Hash::make($otp),
+            'otp_expires' => now()->addMinutes(10)
+        ]);
+        
+        // Send email
+        Mail::to($user->email)->send(new LoginOtpMail($user, $otp));
+        
+        // Redirect to OTP page
+        return redirect()->route('login.otp');
+    }
+
+    // 9. Login directly (admin/vet/groomer)
+    Auth::login($user);
+    $user->update(['last_login' => now()]);
+    
+    // 10. Redirect by role
+    return $this->redirectByRole($user);
+}
+
+public function showOtpForm()
+{
+    if (!session()->has('login_otp_user_id')) {
+        return redirect()->route('login');
+    }
+    
+    $user = User::find(session('login_otp_user_id'));
+    return view('auth.otp', compact('user'));
+}
+
+public function verifyOtp(Request $request)
+{
+    $request->validate(['otp' => 'required|digits:6']);
+    
+    // Check session
+    if (!session()->has('otp_code') || !session()->has('otp_expires')) {
+        return back()->withErrors(['otp' => 'OTP session expired.']);
+    }
+    
+    // Check expiry
+    if (now()->gt(session('otp_expires'))) {
+        return back()->withErrors(['otp' => 'OTP expired. Please request a new one.']);
+    }
+    
+    // Verify OTP
+    if (!Hash::check($request->otp, session('otp_code'))) {
+        return back()->withErrors(['otp' => 'Invalid OTP. Please try again.']);
+    }
+    
+    // Login user
+    $user = User::find(session('login_otp_user_id'));
+    Auth::login($user);
+    $user->update(['last_login' => now()]);
+    
+    // Clear OTP session
+    session()->forget(['login_otp_user_id', 'otp_code', 'otp_expires']);
+    
+    // Redirect
+    return $this->redirectByRole($user);
+}
+
+public function resendOtp()
+{
+    if (!session()->has('login_otp_user_id')) {
+        return back()->withErrors(['error' => 'Session expired.']);
+    }
+    
+    $user = User::find(session('login_otp_user_id'));
+    
+    // Generate new OTP
+    $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    
+    // Update session
+    session([
+        'otp_code' => Hash::make($otp),
+        'otp_expires' => now()->addMinutes(10)
+    ]);
+    
+    // Send email
+    Mail::to($user->email)->send(new LoginOtpMail($user, $otp));
+    
+    return back()->with('success', 'New OTP sent to your email.');
+}
+
+protected function redirectByRole($user)
+{
+    return match($user->role->name) {
+        'pet_owner' => redirect()->route('owner.dashboard'),
+        'veterinarian' => redirect()->route('vet.dashboard'),
+        'groomer' => redirect()->route('groomer.dashboard'),
+        'admin', 'superadmin' => redirect()->route('admin.dashboard'),
+        default => redirect()->route('home'),
+    };
+}
+
+
+============================================================
+LARAVEL CONVERSION - ROUTES
+============================================================
+
+File: routes/web.php
+
+use App\Http\Controllers\Auth\LoginController;
+
+Route::get('/login', [LoginController::class, 'showLoginForm'])
+    ->name('login');
+
+Route::post('/login', [LoginController::class, 'login']);
+
+Route::get('/login/otp', [LoginController::class, 'showOtpForm'])
+    ->name('login.otp');
+
+Route::post('/login/otp/verify', [LoginController::class, 'verifyOtp'])
+    ->name('login.otp.verify');
+
+Route::post('/login/otp/resend', [LoginController::class, 'resendOtp'])
+    ->name('login.otp.resend');
+
+
+============================================================
+LARAVEL CONVERSION - BLADE VIEWS
+============================================================
+
+File: resources/views/auth/login.blade.php
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - PetCare+</title>
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card-wrapper">
+            <div class="auth-logo">
+                <img src="{{ asset('assets/logo/petcare.png') }}" 
+                     alt="PetCare+" class="auth-logo-img">
+            </div>
+
+            <div class="card auth-card @if($errors->any()) auth-card--shake @endif">
+                <div class="card-body auth-card-body">
+
+                    @if($errors->has('lockout'))
+                        <div class="alert alert-danger" id="lockout-alert">
+                            <i class="fas fa-lock"></i>
+                            <div>
+                                <strong>Account Locked</strong><br>
+                                {{ $errors->first('lockout') }}
+                                @if(session('lockout_timestamp'))
+                                <span id="lockout-countdown"></span>
+                                @endif
+                            </div>
+                        </div>
+                    @elseif($errors->has('inactive'))
+                        <div class="alert alert-warning">
+                            <i class="fas fa-clock"></i>
+                            {{ $errors->first('inactive') }}
+                        </div>
+                    @elseif($errors->any())
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle"></i>
+                            @foreach($errors->all() as $error)
+                                <div>{{ $error }}</div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <div class="auth-header">
+                        <h1 class="auth-title">Welcome back</h1>
+                        <p class="auth-subtitle">Sign in to your PetCare+ account</p>
+                    </div>
+
+                    <form method="POST" action="{{ route('login') }}">
+                        @csrf
+
+                        <div class="form-group">
+                            <label class="form-label">Email Address <span class="required">*</span></label>
+                            <div class="input-group">
+                                <input type="email" name="email" class="form-control"
+                                    placeholder="Enter your email address"
+                                    value="{{ old('email') }}" required autocomplete="email">
+                                <i class="fas fa-envelope input-group-icon"></i>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Password <span class="required">*</span></label>
+                            <div class="input-group">
+                                <input type="password" name="password" class="form-control"
+                                    placeholder="••••••••" required autocomplete="current-password">
+                                <button type="button" class="toggle-pw">
+                                    <i class="fas fa-eye-slash"></i>
+                                </button>
+                            </div>
+                            <div class="auth-link-right">
+                                <a href="{{ route('password.request') }}" class="auth-forgot-link">
+                                    <i class="fas fa-key"></i> Forgot password?
+                                </a>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block btn-lg auth-submit-btn">
+                            <i class="fas fa-arrow-right"></i> Continue
+                        </button>
+                    </form>
+
+                    <div class="auth-nav-links">
+                        <a href="{{ route('register') }}" class="auth-nav-link">
+                            <i class="fas fa-user-plus"></i>
+                            Don't have an account? <strong>Create one free</strong>
+                        </a>
+                        <a href="{{ route('home') }}" class="auth-nav-link">
+                            <i class="fas fa-arrow-left"></i> Back to Home
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if(session('lockout_timestamp'))
+    <script>
+        (function() {
+            var until = {{ session('lockout_timestamp') }} * 1000;
+            var el = document.getElementById('lockout-countdown');
+            if (!el) return;
+            
+            function tick() {
+                var diff = Math.max(0, Math.floor((until - Date.now()) / 1000));
+                if (diff <= 0) {
+                    location.reload();
+                    return;
+                }
+                var m = Math.floor(diff / 60), s = diff % 60;
+                el.textContent = m > 0 ? m + 'm ' + s + 's' : s + 's';
+                setTimeout(tick, 1000);
+            }
+            tick();
+        })();
+    </script>
+    @endif
+
+    <script>
+        document.querySelector('.toggle-pw')?.addEventListener('click', function() {
+            var inp = this.closest('.input-group').querySelector('input');
+            var isHidden = inp.type === 'password';
+            inp.type = isHidden ? 'text' : 'password';
+            this.querySelector('i').className = isHidden ? 'fas fa-eye' : 'fas fa-eye-slash';
+        });
+    </script>
+</body>
+</html>
+
+
+File: resources/views/auth/otp.blade.php
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Verification - PetCare+</title>
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card-wrapper">
+            <div class="auth-logo">
+                <img src="{{ asset('assets/logo/petcare.png') }}" 
+                     alt="PetCare+" class="auth-logo-img">
+            </div>
+
+            <div class="card auth-card">
+                <div class="card-body auth-card-body">
+
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            {{ session('success') }}
+                        </div>
+                    @endif
+
+                    @if($errors->any())
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle"></i>
+                            @foreach($errors->all() as $error)
+                                <div>{{ $error }}</div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <div class="auth-header">
+                        <h2 class="auth-title">Two-Factor Verification</h2>
+                        <p class="auth-subtitle">
+                            We sent a 6-digit code to<br>
+                            <strong>{{ $user->email }}</strong>
+                        </p>
+                    </div>
+
+                    <form method="POST" action="{{ route('login.otp.verify') }}">
+                        @csrf
+
+                        <div class="form-group">
+                            <label class="form-label">Enter OTP Code</label>
+                            <input type="text" name="otp" class="form-control" 
+                                   placeholder="000000" maxlength="6" 
+                                   pattern="[0-9]{6}" required autofocus>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block btn-lg">
+                            <i class="fas fa-shield-alt"></i> Verify & Sign In
+                        </button>
+                    </form>
+
+                    <div class="otp-footer-row">
+                        <span class="otp-resend-text">Didn't receive the code?</span>
+                        <form method="POST" action="{{ route('login.otp.resend') }}" style="display:inline">
+                            @csrf
+                            <button type="submit" class="otp-resend-btn otp-resend-btn--active">
+                                Resend OTP
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="auth-nav-links">
+                        <a href="{{ route('login') }}" class="auth-nav-link">
+                            <i class="fas fa-arrow-left"></i> Back to Login
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+
+============================================================
+LARAVEL CONVERSION - MAILABLE
+============================================================
+
+File: app/Mail/LoginOtpMail.php
+
+<?php
+
+namespace App\Mail;
+
+use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class LoginOtpMail extends Mailable
+{
+    use Queueable, SerializesModels;
+
+    public $user;
+    public $otp;
+
+    public function __construct(User $user, string $otp)
+    {
+        $this->user = $user;
+        $this->otp = $otp;
+    }
+
+    public function build()
+    {
+        return $this->subject('Your PetCare+ Login OTP')
+                    ->view('emails.login-otp');
+    }
+}
+
+
+File: resources/views/emails/login-otp.blade.php
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="margin:0;padding:0;background:#F8FAFC;font-family:Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;padding:40px 0;">
+        <tr><td align="center">
+            <table width="520" cellpadding="0" cellspacing="0" 
+                   style="background:#fff;border-radius:16px;overflow:hidden;
+                          box-shadow:0 4px 20px rgba(0,0,0,.08);">
+                <tr>
+                    <td style="background:linear-gradient(135deg,#1E40FF,#00D4AA);
+                               padding:36px;text-align:center;">
+                        <div style="font-size:2rem;">🐾</div>
+                        <h1 style="color:#fff;font-size:1.4rem;margin:12px 0 4px;">
+                            PetCare+ Clinic Hub
+                        </h1>
+                        <p style="color:rgba(255,255,255,.85);font-size:.88rem;margin:0;">
+                            Login Verification
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:36px;">
+                        <p style="font-size:1rem;color:#1E293B;margin-bottom:.5rem;">
+                            Hi <strong>{{ $user->first_name }}</strong> 👋
+                        </p>
+                        <p style="font-size:.9rem;color:#64748B;line-height:1.7;
+                                  margin-bottom:1.5rem;">
+                            Use the OTP below to complete your login. 
+                            It expires in <strong>10 minutes</strong>.
+                        </p>
+                        <div style="text-align:center;margin:24px 0;">
+                            <div style="display:inline-block;background:#F1F5FF;
+                                       border:2px dashed #1E40FF;border-radius:12px;
+                                       padding:18px 40px;">
+                                <span style="font-size:2.4rem;font-weight:800;
+                                           letter-spacing:10px;color:#1E40FF;">
+                                    {{ $otp }}
+                                </span>
+                            </div>
+                        </div>
+                        <p style="font-size:.82rem;color:#94A3B8;text-align:center;
+                                  margin-top:1rem;">
+                            ⏱ This OTP expires in 10 minutes.<br>
+                            If you did not attempt to log in, ignore this email.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background:#F8FAFC;padding:20px;text-align:center;
+                               border-top:1px solid #E2E8F0;">
+                        <p style="font-size:.78rem;color:#94A3B8;margin:0;">
+                            &copy; 2026 PetCare+ Clinic Hub · Pangasinan, Philippines
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td></tr>
+    </table>
+</body>
+</html>
+
+
+============================================================
+SECURITY FEATURES TO PRESERVE
+============================================================
+
+1. BCrypt Password Hashing (cost=12)
+2. CSRF Token Validation (Laravel automatic)
+3. Account Lockout (5 failed attempts = 5-minute lockout)
+4. Failed Login Counter (increments on wrong password)
+5. OTP Expiry (10 minutes from generation)
+6. OTP Hashing (stored hashed in session)
+7. Session-based OTP (not stored in database)
+8. Role-based OTP requirement (only pet owners)
+9. Account status check (is_active flag)
+10. Lockout countdown timer (JavaScript)
+
+
+============================================================
+TESTING CHECKLIST
+============================================================
+
+[ ] Login with pet owner email → OTP screen appears
+[ ] Login with admin email → Skip OTP, direct to dashboard
+[ ] Login with vet email → Skip OTP, direct to dashboard
+[ ] Login with groomer email → Skip OTP, direct to dashboard
+[ ] Wrong password 5 times → Account locked for 5 minutes
+[ ] Lockout countdown displays correctly
+[ ] After 5 minutes → Account unlocks automatically
+[ ] Inactive account (is_active=0) → Shows pending approval message
+[ ] Valid OTP → Login successful
+[ ] Expired OTP (>10 minutes) → Error shown
+[ ] Wrong OTP → Error shown, allow retry
+[ ] Resend OTP → New code sent to email
+[ ] Email with OTP received within 1 minute
+[ ] Failed attempts reset to 0 after successful login
+[ ] last_login timestamp updates on successful login
+[ ] Redirect to correct dashboard based on role
+
+
+============================================================
+UI ELEMENTS TO PRESERVE
+============================================================
+
+✓ PetCare+ logo at top with floating animation
+✓ "Welcome back" heading
+✓ Email input with envelope icon
+✓ Password input with eye toggle button
+✓ "Forgot password?" link
+✓ Error alerts with red background and shake animation
+✓ Lockout alert with countdown timer
+✓ Pending approval alert with yellow background
+✓ "Continue" button with arrow icon
+✓ "Don't have an account?" link
+✓ "Back to Home" link
+✓ Card shake animation on error
+✓ Glassmorphism card effect
+✓ Background pattern (paws & bones)
+
+
+============================================================
+CSS CLASSES TO REUSE
+============================================================
+
+.auth-container
+.auth-card-wrapper
+.auth-logo, .auth-logo-img
+.auth-card, .auth-card-body
+.auth-card--shake (error animation)
+.auth-header, .auth-title, .auth-subtitle
+.form-group, .form-label, .form-control
+.input-group, .input-group-icon
+.toggle-pw (password toggle button)
+.btn-primary, .btn-block, .btn-lg
+.auth-submit-btn
+.auth-nav-links, .auth-nav-link
+.auth-forgot-link
+.alert, .alert-danger, .alert-warning
+.required (asterisk for required fields)
+
+
+============================================================
+END OF PROMPT
+============================================================

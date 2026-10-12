@@ -1,0 +1,55 @@
+============================================================
+LOGIN PAGE BACKGROUND PATTERN - PAWS & BONES
+============================================================
+
+Copy this CSS to your Laravel login page:
+
+/* ============================================================
+   GLOBAL PAW + BONE BACKGROUND PATTERN
+   Widely-spaced paw prints & bones in pale lavender-blue
+   ============================================================ */
+
+/* LIGHT MODE - White background with subtle pattern */
+body {
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Cg fill='%23b8c2de' fill-opacity='0.38'%3E%3Cg transform='translate(55,70)'%3E%3Cellipse cx='0' cy='13' rx='14' ry='11'/%3E%3Ccircle cx='-15' cy='-3' r='7'/%3E%3Ccircle cx='-4' cy='-11' r='7'/%3E%3Ccircle cx='8' cy='-10' r='7'/%3E%3Ccircle cx='17' cy='-1' r='6.5'/%3E%3C/g%3E%3Cg transform='translate(210,55) rotate(35)'%3E%3Crect x='-18' y='-4' width='36' height='8' rx='3'/%3E%3Ccircle cx='-18' cy='-7' r='6'/%3E%3Ccircle cx='-18' cy='7' r='6'/%3E%3Ccircle cx='18' cy='-7' r='6'/%3E%3Ccircle cx='18' cy='7' r='6'/%3E%3C/g%3E%3Cg transform='translate(225,210) rotate(-15)'%3E%3Cellipse cx='0' cy='12' rx='13' ry='10'/%3E%3Ccircle cx='-14' cy='-2' r='6.5'/%3E%3Ccircle cx='-4' cy='-10' r='6.5'/%3E%3Ccircle cx='8' cy='-9' r='6.5'/%3E%3Ccircle cx='16' cy='0' r='6'/%3E%3C/g%3E%3Cg transform='translate(60,225) rotate(-50)'%3E%3Crect x='-16' y='-3.5' width='32' height='7' rx='2.5'/%3E%3Ccircle cx='-16' cy='-6.5' r='5.5'/%3E%3Ccircle cx='-16' cy='6.5' r='5.5'/%3E%3Ccircle cx='16' cy='-6.5' r='5.5'/%3E%3Ccircle cx='16' cy='6.5' r='5.5'/%3E%3C/g%3E%3Cg transform='translate(148,148) rotate(12)'%3E%3Cellipse cx='0' cy='9' rx='10' ry='8'/%3E%3Ccircle cx='-11' cy='-2' r='5'/%3E%3Ccircle cx='-3' cy='-9' r='5'/%3E%3Ccircle cx='7' cy='-8' r='5'/%3E%3Ccircle cx='13' cy='1' r='4.5'/%3E%3C/g%3E%3Cg transform='translate(245,148) rotate(20)'%3E%3Crect x='-15' y='-3' width='30' height='6' rx='2'/%3E%3Ccircle cx='-15' cy='-6' r='5'/%3E%3Ccircle cx='-15' cy='6' r='5'/%3E%3Ccircle cx='15' cy='-6' r='5'/%3E%3Ccircle cx='15' cy='6' r='5'/%3E%3C/g%3E%3Cg transform='translate(18,155) rotate(-70)'%3E%3Crect x='-14' y='-3' width='28' height='6' rx='2'/%3E%3Ccircle cx='-14' cy='-6' r='5'/%3E%3Ccircle cx='-14' cy='6' r='5'/%3E%3Ccircle cx='14' cy='-6' r='5'/%3E%3Ccircle cx='14' cy='6' r='5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 300px 300px;
+  background-attachment: fixed;
+}
+
+/* DARK MODE - Dark background with same pattern */
+[data-theme="dark"] body {
+  background-color: #0d1424;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Cg fill='%23b8c2de' fill-opacity='0.38'%3E%3Cg transform='translate(55,70)'%3E%3Cellipse cx='0' cy='13' rx='14' ry='11'/%3E%3Ccircle cx='-15' cy='-3' r='7'/%3E%3Ccircle cx='-4' cy='-11' r='7'/%3E%3Ccircle cx='8' cy='-10' r='7'/%3E%3Ccircle cx='17' cy='-1' r='6.5'/%3E%3C/g%3E%3Cg transform='translate(210,55) rotate(35)'%3E%3Crect x='-18' y='-4' width='36' height='8' rx='3'/%3E%3Ccircle cx='-18' cy='-7' r='6'/%3E%3Ccircle cx='-18' cy='7' r='6'/%3E%3Ccircle cx='18' cy='-7' r='6'/%3E%3Ccircle cx='18' cy='7' r='6'/%3E%3C/g%3E%3Cg transform='translate(225,210) rotate(-15)'%3E%3Cellipse cx='0' cy='12' rx='13' ry='10'/%3E%3Ccircle cx='-14' cy='-2' r='6.5'/%3E%3Ccircle cx='-4' cy='-10' r='6.5'/%3E%3Ccircle cx='8' cy='-9' r='6.5'/%3E%3Ccircle cx='16' cy='0' r='6'/%3E%3C/g%3E%3Cg transform='translate(60,225) rotate(-50)'%3E%3Crect x='-16' y='-3.5' width='32' height='7' rx='2.5'/%3E%3Ccircle cx='-16' cy='-6.5' r='5.5'/%3E%3Ccircle cx='-16' cy='6.5' r='5.5'/%3E%3Ccircle cx='16' cy='-6.5' r='5.5'/%3E%3Ccircle cx='16' cy='6.5' r='5.5'/%3E%3C/g%3E%3Cg transform='translate(148,148) rotate(12)'%3E%3Cellipse cx='0' cy='9' rx='10' ry='8'/%3E%3Ccircle cx='-11' cy='-2' r='5'/%3E%3Ccircle cx='-3' cy='-9' r='5'/%3E%3Ccircle cx='7' cy='-8' r='5'/%3E%3Ccircle cx='13' cy='1' r='4.5'/%3E%3C/g%3E%3Cg transform='translate(245,148) rotate(20)'%3E%3Crect x='-15' y='-3' width='30' height='6' rx='2'/%3E%3Ccircle cx='-15' cy='-6' r='5'/%3E%3Ccircle cx='-15' cy='6' r='5'/%3E%3Ccircle cx='15' cy='-6' r='5'/%3E%3Ccircle cx='15' cy='6' r='5'/%3E%3C/g%3E%3Cg transform='translate(18,155) rotate(-70)'%3E%3Crect x='-14' y='-3' width='28' height='6' rx='2'/%3E%3Ccircle cx='-14' cy='-6' r='5'/%3E%3Ccircle cx='-14' cy='6' r='5'/%3E%3Ccircle cx='14' cy='-6' r='5'/%3E%3Ccircle cx='14' cy='6' r='5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 300px 300px;
+  background-attachment: fixed;
+}
+
+/* Responsive: smaller tile on mobile */
+@media (max-width: 768px) {
+  body {
+    background-size: 200px 200px;
+  }
+  [data-theme="dark"] body {
+    background-size: 200px 200px;
+  }
+}
+
+============================================================
+PATTERN DETAILS:
+============================================================
+- Paw prints + dog bones scattered randomly
+- Color: Pale lavender-blue (#b8c2de)
+- Opacity: 38% (very subtle)
+- Pattern size: 300x300px (widely-spaced)
+- Fixed attachment (stays in place when scrolling)
+- Works for both light & dark mode
+
+============================================================
+HOW TO USE IN LARAVEL:
+============================================================
+1. Add to public/css/app.css
+2. Or add to login.blade.php in <style> tag
+3. Or add to resources/css/app.css and compile with Vite

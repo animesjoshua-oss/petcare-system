@@ -35,8 +35,8 @@ $featuredClinics = $stmt->fetchAll();
   <!-- Background image with overlay -->
   <div class="hero-bg">
     <picture>
-      <source media="(max-width: 768px)" srcset="assets/logo/ground1.png" data-light-src="assets/logo/ground1.png" data-dark-src="assets/logo/ground1.png">
-      <img src="assets/logo/ground.png" alt="Happy pet owner with dog" class="hero-bg-img" id="heroBgImg" data-light-src="assets/logo/ground.png" data-dark-src="assets/logo/ground.png">
+      <source media="(max-width: 768px)" srcset="assets/images/landing page/image0.png" data-light-src="assets/images/landing page/image0.png" data-dark-src="assets/images/landing page/image0.png">
+      <img src="assets/images/landing page/image0.png" alt="Happy pet owner with dog" class="hero-bg-img" id="heroBgImg" data-light-src="assets/images/landing page/image0.png" data-dark-src="assets/images/landing page/image0.png">
     </picture>
     <div class="hero-bg-overlay"></div>
     <!-- Decorative gradient orbs -->
@@ -86,7 +86,7 @@ $featuredClinics = $stmt->fetchAll();
 <div class="marquee-strip" aria-hidden="true">
   <div class="marquee-track" id="marqueeTrack">
     <span class="marquee-item"><i class="fas fa-paw"></i> Trusted Veterinary Network <span class="marquee-dot"></span></span>
-    <span class="marquee-item"><i class="fas fa-calendar-check"></i> Easy Online Booking <span class="marquee-dot"></span></span>
+    <span class="marquee-item"><i class="fas fa-calendar-check"></i> Easy line Booking <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-robot"></i> AI Health Insights <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-star"></i> Verified Clinics &amp; Groomers <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-shield-alt"></i> Licensed Professionals <span class="marquee-dot"></span></span>
@@ -95,7 +95,7 @@ $featuredClinics = $stmt->fetchAll();
     <span class="marquee-item"><i class="fas fa-bell"></i> Smart Appointment Reminders <span class="marquee-dot"></span></span>
     <!-- Duplicate for seamless loop -->
     <span class="marquee-item"><i class="fas fa-paw"></i> Trusted Veterinary Network <span class="marquee-dot"></span></span>
-    <span class="marquee-item"><i class="fas fa-calendar-check"></i> Easy Online Booking <span class="marquee-dot"></span></span>
+    <span class="marquee-item"><i class="fas fa-calendar-check"></i> Easy line Booking <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-robot"></i> AI Health Insights <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-star"></i> Verified Clinics &amp; Groomers <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-shield-alt"></i> Licensed Professionals <span class="marquee-dot"></span></span>
@@ -161,6 +161,51 @@ $featuredClinics = $stmt->fetchAll();
   syncNav();
   window.addEventListener('scroll', syncNav, { passive: true });
   window.addEventListener('resize', syncNav, { passive: true });
+})();
+</script>
+
+<script>
+// ========== HERO IMAGE SLIDER (Auto-rotate every 5 seconds) ==========
+(function() {
+  const images = [
+    'assets/images/landing page/image0.png',  // START IMAGE
+    'assets/images/landing page/image1.jpg',
+    'assets/images/landing page/image2.jpg',
+    'assets/images/landing page/image3.jpg',
+    'assets/images/landing page/image4.jpg'
+  ];
+  
+  let currentIndex = 0;
+  const heroImg = document.getElementById('heroBgImg');
+  const heroSource = document.querySelector('.hero-bg picture source');
+  
+  if (heroImg && heroSource) {
+    // Preload all images
+    images.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+    
+    // Change image every 5 seconds with smooth fade transition
+    setInterval(() => {
+      currentIndex = (currentIndex + 1) % images.length;
+      const nextImage = images[currentIndex];
+      
+      // Add fade-out effect
+      heroImg.style.transition = 'opacity 0.8s ease-in-out';
+      heroImg.style.opacity = '0';
+      
+      // Change image after fade-out
+      setTimeout(() => {
+        heroImg.src = nextImage;
+        heroSource.srcset = nextImage;
+        
+        // Fade back in
+        heroImg.style.opacity = '1';
+      }, 800);
+      
+    }, 5000); // 5000ms = 5 seconds
+  }
 })();
 </script>
 

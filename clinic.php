@@ -114,13 +114,120 @@ if (!empty($operatingHours)) {
 <div style="background:var(--bg);min-height:100vh;">
   <!-- Cover -->
   <div style="height:280px;background:linear-gradient(135deg,var(--primary),var(--secondary));position:relative;overflow:hidden;">
-    <?php if ($clinic['cover_photo']): ?>
-    <img src="<?= sanitize($clinic['cover_photo']) ?>" style="width:100%;height:100%;object-fit:cover;opacity:.7;" alt="">
+    <?php 
+    $coverSrc = null;
+    $clName = strtolower($clinic['name']);
+    
+    // Check database first
+    if (isset($clinic['cover_photo']) && $clinic['cover_photo'] !== '' && $clinic['cover_photo'] !== null): 
+      if (str_starts_with($clinic['cover_photo'], 'http')):
+          $coverSrc = $clinic['cover_photo'];
+      else:
+          $coverSrc = APP_URL . '/' . ltrim($clinic['cover_photo'], '/');
+      endif;
+    endif;
+    
+    // Auto-detect from clinic name if no database entry
+    if (!$coverSrc) {
+      $knownCovers = [
+        "d&r"          => 'assets/images/clinics/DR.jpg',
+        'every'        => 'assets/images/clinics/evey.jpg',
+        'nose to tail' => 'assets/images/clinics/NTTVC.jpg',
+        'paws & purrs' => 'assets/images/clinics/paws.jpg',
+        'paws'         => 'assets/images/clinics/paws.jpg',
+        'mjm'          => 'assets/images/clinics/mjm.png',
+        'amado'        => 'assets/images/clinics/Amado.jpg',
+        'animal life'  => 'assets/images/clinics/Amado.jpg',
+        'petdocs'      => 'assets/images/clinics/Petdocs.jpg',
+        'petdoctor'    => 'assets/images/clinics/Petdocs.jpg',
+        'saint'        => 'assets/images/clinics/saint.png',
+        'st. francis'  => 'assets/images/clinics/saint.png',
+        'st. martin'   => 'assets/images/clinics/saint.png',
+        'francis'      => 'assets/images/clinics/saint.png',
+        'martin'       => 'assets/images/clinics/saint.png',
+        'rural'        => 'assets/images/clinics/ruralvet.png',
+        'elegance'     => 'assets/images/clinics/ruralvet.png',
+        'petally'      => 'assets/images/clinics/petally.png',
+        'protect'      => 'assets/images/clinics/Protect.png',
+      ];
+      foreach ($knownCovers as $keyword => $path) {
+        if (str_contains($clName, $keyword)) { 
+          $coverSrc = APP_URL . '/' . $path;
+          break;
+        }
+      }
+    }
+    
+    if ($coverSrc):
+    ?>
+    <!-- DEBUG: Cover source = <?= htmlspecialchars($coverSrc) ?> -->
+    <!-- DEBUG: APP_URL = <?= htmlspecialchars(APP_URL) ?> -->
+    <img src="<?= htmlspecialchars($coverSrc) ?>" style="width:100%;height:100%;object-fit:cover;opacity:.7;" alt="Cover">
     <?php endif; ?>
     <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;padding:2rem;">
       <div class="container" style="display:flex;align-items:flex-end;gap:1.5rem;max-width:1200px;">
-        <div style="width:80px;height:80px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--primary);flex-shrink:0;box-shadow:var(--shadow);">
-          <?php if ($clinic['logo']): ?><img src="<?= sanitize($clinic['logo']) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:16px;" alt=""><?php else: ?><i class="fas fa-hospital-alt"></i><?php endif; ?>
+        <div style="width:80px;height:80px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--primary);flex-shrink:0;box-shadow:var(--shadow);overflow:hidden;">
+          <?php 
+          // Auto-detect logo based on clinic name
+          $clName = strtolower($clinic['name']);
+          $logoSrc = null;
+          
+          // DEBUG: Show clinic name
+          echo "<!-- DEBUG: Clinic name = " . htmlspecialchars($clName) . " -->";
+          
+          // Check database first
+          if (isset($clinic['logo']) && $clinic['logo'] !== '' && $clinic['logo'] !== null): 
+            if (str_starts_with($clinic['logo'], 'http')):
+                $logoSrc = $clinic['logo'];
+            else:
+                $logoSrc = APP_URL . '/' . ltrim($clinic['logo'], '/');
+            endif;
+            echo "<!-- DEBUG: Found logo in database = " . htmlspecialchars($logoSrc) . " -->";
+          endif;
+          
+          // Auto-detect from clinic name
+          if (!$logoSrc) {
+            $knownLogos = [
+              'd&r'          => 'assets/images/clinics/DR.jpg',
+              'every'        => 'assets/images/clinics/evey.jpg',
+              'nose to tail' => 'assets/images/clinics/NTTVC.jpg',
+              'paws & purrs' => 'assets/images/clinics/paws.jpg',
+              'paws'         => 'assets/images/clinics/paws.jpg',
+              'mjm'          => 'assets/images/clinics/mjm.png',
+              'amado'        => 'assets/images/clinics/Amado.jpg',
+              'animal life'  => 'assets/images/clinics/Amado.jpg',
+              'petdocs'      => 'assets/images/clinics/Petdocs.jpg',
+              'petdoctor'    => 'assets/images/clinics/Petdocs.jpg',
+              'saint'        => 'assets/images/clinics/saint.png',
+              'st. francis'  => 'assets/images/clinics/saint.png',
+              'st. martin'   => 'assets/images/clinics/saint.png',
+              'francis'      => 'assets/images/clinics/saint.png',
+              'martin'       => 'assets/images/clinics/saint.png',
+              'rural'        => 'assets/images/clinics/ruralvet.png',
+              'elegance'     => 'assets/images/clinics/ruralvet.png',
+              'petally'      => 'assets/images/clinics/petally.png',
+              'protect'      => 'assets/images/clinics/Protect.png',
+            ];
+            foreach ($knownLogos as $keyword => $path) {
+              if (str_contains($clName, $keyword)) { 
+                $logoSrc = APP_URL . '/' . $path;
+                echo "<!-- DEBUG: Matched keyword '" . $keyword . "' -> " . htmlspecialchars($logoSrc) . " -->";
+                break;
+              }
+            }
+          }
+          
+          // DEBUG: Show what logo source we got
+          echo "<!-- DEBUG: Final logo source = " . ($logoSrc ? htmlspecialchars($logoSrc) : 'NONE - WILL SHOW ICON') . " -->";
+          echo "<!-- DEBUG: APP_URL from constant = " . htmlspecialchars(APP_URL) . " -->";
+          echo "<!-- DEBUG: Clinic logo field from DB = " . htmlspecialchars($clinic['logo'] ?? 'NULL') . " -->";
+          
+          if ($logoSrc):
+          ?>
+          <img src="<?= htmlspecialchars($logoSrc) ?>" style="width:100%;height:100%;object-fit:cover;" alt="Logo" onerror="console.error('Failed to load logo:', this.src)">
+          <?php else: ?>
+          <i class="fas fa-hospital-alt"></i>
+          <?php endif; ?>
         </div>
         <div style="color:#fff;">
           <h1 style="font-size:1.75rem;font-weight:800;margin-bottom:.25rem;"><?= sanitize($clinic['name']) ?></h1>
@@ -134,7 +241,7 @@ if (!empty($operatingHours)) {
           <?php if (isLoggedIn() && currentUser()['role_name']==='pet_owner'): ?>
           <a href="dashboard/owner/book.php?clinic=<?= $id ?>" class="btn btn-secondary"><i class="fas fa-calendar-plus"></i> Book Now</a>
           <?php else: ?>
-          <a href="register.php" class="btn btn-secondary"><i class="fas fa-calendar-plus"></i> Book Now</a>
+          <a href="<?= APP_URL ?>/auth/register.php" class="btn btn-secondary"><i class="fas fa-calendar-plus"></i> Book Now</a>
           <?php endif; ?>
           <button onclick="toggleFavorite(<?= $id ?>)" class="btn btn-outline-white" id="favBtn">
             <i class="fas fa-heart<?= $isFav?'':'-broken' ?>"></i> <?= $isFav?'Saved':'Save' ?>
@@ -380,15 +487,15 @@ if (!empty($operatingHours)) {
         <?php endif; ?>
 
         <!-- Quick Book -->
-        <div class="card" style="background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;">
+        <div class="card" style="background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff !important;">
           <div class="card-body" style="text-align:center;">
-            <i class="fas fa-calendar-check" style="font-size:2.5rem;margin-bottom:1rem;opacity:.85;"></i>
-            <h3 style="font-weight:700;margin-bottom:.5rem;">Ready to Book?</h3>
-            <p style="opacity:.85;font-size:.875rem;margin-bottom:1.25rem;">Select a service and pick a time that works for you.</p>
+            <i class="fas fa-calendar-check" style="font-size:2.5rem;margin-bottom:1rem;opacity:.85;color:#fff;"></i>
+            <h3 style="font-weight:700;margin-bottom:.5rem;color:#fff !important;">Ready to Book?</h3>
+            <p style="opacity:.85;font-size:.875rem;margin-bottom:1.25rem;color:#fff !important;">Select a service and pick a time that works for you.</p>
             <?php if (isLoggedIn() && currentUser()['role_name']==='pet_owner'): ?>
             <a href="dashboard/owner/book.php?clinic=<?= $id ?>" class="btn" style="background:#fff;color:var(--primary);font-weight:700;width:100%;justify-content:center;">Book Appointment</a>
             <?php else: ?>
-            <a href="register.php" class="btn" style="background:#fff;color:var(--primary);font-weight:700;width:100%;justify-content:center;">Get Started</a>
+            <a href="<?= APP_URL ?>/auth/register.php" class="btn" style="background:#fff;color:var(--primary);font-weight:700;width:100%;justify-content:center;">Get Started</a>
             <?php endif; ?>
           </div>
         </div>
@@ -401,7 +508,7 @@ if (!empty($operatingHours)) {
 
 <script>
 async function toggleFavorite(clinicId) {
-  if (!<?= isLoggedIn() ? 'true' : 'false' ?>) { location.href = '<?= APP_URL ?>/login.php'; return; }
+  if (!<?= isLoggedIn() ? 'true' : 'false' ?>) { location.href = '<?= APP_URL ?>/auth/login.php'; return; }
   try {
     const data = await apiCall('<?= APP_URL ?>/api/favorites.php', 'POST', { clinic_id: clinicId });
     const btn = document.getElementById('favBtn');

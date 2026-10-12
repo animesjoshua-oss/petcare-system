@@ -27,6 +27,15 @@ function _adminLink(string $href, string $icon, string $label, int $badge = 0, s
 }
 ?>
 <aside class="sidebar">
+  <!-- Logo Section -->
+  <div class="sidebar-logo">
+    <a href="<?= APP_URL ?>/index.php" class="sidebar-logo-link">
+      <img src="<?= APP_URL ?>/assets/images/logo.png" alt="PetCare+" class="sidebar-logo-img">
+      <span class="sidebar-logo-text">PetCare<span style="color:#0EA5E9">+</span></span>
+    </a>
+  </div>
+  
+  <!-- User Info Header -->
   <div class="sidebar-header">
     <div class="sidebar-user">
       <div class="user-avatar-placeholder">
@@ -34,7 +43,7 @@ function _adminLink(string $href, string $icon, string $label, int $badge = 0, s
       </div>
       <div>
         <div class="sidebar-user-name"><?= sanitize($user['first_name'] . ' ' . $user['last_name']) ?></div>
-        <div class="sidebar-user-role" style="color:var(--danger);">Admin</div>
+        <div class="sidebar-user-role">Clinic Admin</div>
       </div>
     </div>
     <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse sidebar">

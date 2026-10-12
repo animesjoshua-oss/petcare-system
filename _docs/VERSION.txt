@@ -1,0 +1,165 @@
+PetCare+ Clinic Hub - Version History
+=====================================
+
+v1.0.0 (December 15, 2024)
+- FINALLY RELEASED! 🎉
+- Fixed input background color issue (dark inputs now)
+- Password toggle icon visibility improved
+- Core features working:
+  * User authentication with OTP (Gmail app password setup was painful)
+  * Dashboards for all roles (owner, vet, groomer, admin)
+  * Appointment booking system (had to refactor booking logic 3 times)
+  * Pet health records
+  * AI chatbot (Groq API integration surprisingly easy)
+  * Notifications (polling every 30s, might switch to WebSocket later)
+  * Dark mode (spent way too long on colors)
+  * Mobile responsive (mostly, some quirks on Samsung Internet)
+  
+Known issues:
+- Long clinic names overflow on mobile (need text-overflow fix)
+- Notifications sometimes don't update immediately
+- File upload doesn't show progress bar
+
+v0.9.5 (December 1, 2024)
+- Fixed "Undefined index" warning in header.php
+- Mobile menu z-index increased to 99999 (overkill but works)
+- Improved error messages on forms
+- Added loading states to some buttons (not all yet)
+- Bug fixes:
+  * Login redirect loop fixed (was calling session_start twice)
+  * Appointment form now validates past dates
+  
+v0.9.0 (November 20, 2024)
+- Implemented AI chatbot with Groq API
+- Added favorite clinics feature
+- Enhanced mobile navigation (backdrop-filter for iOS Safari was tricky)
+- Email notifications for appointments (PHPMailer setup took 4 hours)
+- Dark mode color refinements (changed colors like 5 times)
+- Fixed autofill styling bug (webkit-box-shadow hack)
+
+Issues encountered:
+- Gmail SMTP required App Password (not regular password)
+- iOS Safari needs -webkit-backdrop-filter prefix
+- Session timeout causing random logouts
+
+v0.8.5 (October 15, 2024)
+- Security audit and fixes:
+  * Fixed SQL injection in search (wasn't using prepared statements)
+  * Added CSRF tokens to all forms
+  * Improved input validation
+- Performance improvements:
+  * Added database indexes on frequently queried columns
+  * Reduced notification polling from 10s to 30s (server couldn't handle it)
+
+v0.8.0 (September 25, 2024)
+- Admin dashboard completed
+- Clinic management features
+- User profile editing
+- Pet photo uploads (had issues with file permissions, fixed)
+- Rating and review system
+- Tried implementing Redis (hosting doesn't support it, gave up)
+
+v0.7.5 (August 20, 2024)
+- Image upload bug fixes:
+  * Increased upload_max_filesize to 10M
+  * Fixed directory permissions (needs 755)
+  * Added better error messages
+- File size validation on client side
+- Compress images before upload (using canvas API)
+
+v0.7.0 (August 1, 2024)
+- Groomer role functionality
+- Service booking for grooming
+- Calendar view for appointments
+- Notification system (simple polling for now)
+- Mobile menu improvements
+
+Issues:
+- File uploads were failing silently (permissions + php.ini limits)
+- Calendar library had conflicts, rewrote with vanilla JS
+
+v0.6.0 (July 10, 2024)
+- Veterinarian dashboard
+- Pet health records management
+- Appointment management for vets
+- Clinic profile pages
+- Database "server has gone away" errors (increased wait_timeout)
+
+v0.5.0 (June 15, 2024)
+- Pet owner dashboard
+- Browse and search clinics
+- Basic appointment booking
+- Pet profile management
+- Removed jQuery (didn't need it, vanilla JS is fine)
+- Tried BEM naming convention (too verbose, gave up)
+
+v0.4.0 (May 20, 2024)
+- Database schema finalized
+- User authentication system
+- OTP verification via email
+- Password reset functionality
+- Session management
+
+Lessons learned:
+- Foreign key constraints are important (added them)
+- Backups are crucial (almost lost data during testing)
+
+v0.3.5 (April 25, 2024)
+- Dark mode transitions fixed (added .theme-transitioning class)
+- Button hover effects polished
+- Form validation improved (client + server side)
+- Started using CSS variables (should've done this from day 1)
+
+v0.3.0 (April 5, 2024)
+- Initial UI design completed
+- Responsive layout (desktop-first, should've been mobile-first)
+- Dark mode support added (first attempt was too dark)
+- CSS framework established (custom CSS, no Bootstrap)
+
+Notes:
+- Spent 3 days on dark mode colors
+- Background paw pattern was fun to create
+
+v0.2.0 (March 10, 2024)
+- Project structure setup
+- Database design (schema planning took time but worth it)
+- PHP configuration (XAMPP setup on Windows)
+- Basic routing
+- Composer setup for dependencies
+
+v0.1.0 (February 20, 2024)
+- Project started
+- Requirements gathering (talked to 3 vet clinics)
+- Initial planning and mockups (used Figma)
+- Technology stack decided:
+  * PHP 8+ (familiar with it)
+  * MySQL (reliable)
+  * Vanilla JS (no frameworks to keep it simple)
+  * XAMPP for local development
+
+---
+Notes:
+- Total development time: ~10 months
+- Lines of code: ~15,000+ (rough estimate)
+- Coffee consumed: Too much
+- Stack Overflow visits: Many
+- Bugs fixed: Lost count
+- Lessons learned: A lot
+
+This project taught me:
+- Planning ahead saves time later
+- User testing is invaluable (showed to 5 friends)
+- Browser compatibility is still a pain (looking at you, Safari)
+- Dark mode is harder than it looks
+- Don't reinvent the wheel (almost built custom JS framework, stopped)
+- Security is not optional
+- Backups are not optional
+- Documentation is boring but Future Me always appreciates it
+
+Future plans:
+- Add unit tests (maybe?)
+- Implement WebSocket for real-time notifications
+- Mobile app version? (need budget approval)
+- Better caching strategy
+- Image optimization
+- API documentation

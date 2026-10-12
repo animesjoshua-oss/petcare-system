@@ -4,8 +4,12 @@ requireLogin(); requireRole(['pet_owner']);
 $user = currentUser(); $pageTitle='Favorite Clinics';
 $isDashboard = true; $db=getDB();
 
-if (isset($_GET['remove']) && verifyCsrfToken($_GET['csrf']??'')) {
-    $db->prepare('DELETE FROM favorite_clinics WHERE user_id=? AND clinic_id=?')->execute([$user['id'],(int)$_GET['remove']]);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove'])) {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        http_response_code(403);
+        exit('Invalid request. Please refresh the page and try again.');
+    }
+    $db->prepare('DELETE FROM favorite_clinics WHERE user_id=? AND clinic_id=?')->execute([$user['id'],(int)$_POST['remove']]);
     header('Location: favorites.php?removed=1'); exit;
 }
 
