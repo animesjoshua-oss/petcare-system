@@ -288,4 +288,5 @@ For support, email support@petcareplus.com or open an issue on GitHub.
 
 **Made with ❤️ for pets and their humans**
 #   p e t c a r e - c l i n i c - h u b s  
+ #   W E B - p e t c a r e  
  
