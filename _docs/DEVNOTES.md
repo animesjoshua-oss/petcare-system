@@ -5,6 +5,26 @@ Personal notes while building this project. Mostly for my future self when I for
 Started: Feb 2024
 Current Status: Working but needs polish
 
+## Project Progress Update (October 2026)
+
+### Clinic Registration and Vet Admin Onboarding
+
+The clinic registration workflow has been implemented to support the review and onboarding of veterinary clinic administrators. Applicants provide clinic information, the name and contact details of the veterinarian who will serve as Vet Admin, a professional license number, and a supporting credential document. The submitted email address is used as the Vet Admin's sign-in address and as the destination for application updates and, following approval, the one-time password.
+
+A Super Admin reviews the application and its credential document before approving or declining it. Approval creates the clinic listing and Vet Admin account. The new administrator must replace the one-time password at first sign-in. Credential files are stored in a protected upload directory and are made available to Super Admins through an authenticated review page.
+
+The local development database is MySQL. Its database name and connection settings are defined in `includes/config.php`; the current database name is `petcare_clinic_hub`. Database schema changes for clinic applications are documented in `database/migrations/20261013_clinic_registration.sql`.
+
+The application page now clarifies what supporting credential evidence applicants should provide and how the submitted email address is used. Email delivery and the end-to-end approval workflow should be confirmed in the target deployment environment.
+
+### Add Veterinarian Credentials and English Interface Copy
+
+The clinic Vet Admin's Add Veterinarian form now requires the veterinarian's professional license number in addition to their name, email, and clinic. The server validates that the license number is present, and the form explains that it supports clinic verification. The veterinarian's login email still receives a one-time password after the account is created; the veterinarian must change it at first sign-in.
+
+The English onboarding copy communicates that the applicant's email becomes the Vet Admin's sign-in email and that the Super Admin's approval decision and, if approved, one-time password are sent to that address. The credential upload guidance asks for a clear professional veterinarian license or official clinic credential, with readable name and license or registration details.
+
+The database for local development is MySQL, named `petcare_clinic_hub`. Find the connection settings in `includes/config.php` and the clinic application schema update in `database/migrations/20261013_clinic_registration.sql`.
+
 ---
 
 ## Recent Work (Dec 2024)

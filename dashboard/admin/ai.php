@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../includes/functions.php';
 requireLogin(); requireRole(['admin', 'super_admin']);
 $user = currentUser();
+if (isGroomerAdmin($user)) { header('Location: ' . APP_URL . '/auth/unauthorized.php'); exit; }
 $pageTitle = 'AI Assistant';
 $isDashboard = true;
 

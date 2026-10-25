@@ -5,15 +5,17 @@ $pageTitle = 'Find Clinics';
 $search  = sanitize($_GET['search'] ?? '');
 $city    = sanitize($_GET['city'] ?? '');
 $service = sanitize($_GET['service'] ?? '');
+$accessibleOnly = ($_GET['accessible'] ?? '') === '1';
 $sort    = sanitize($_GET['sort'] ?? 'rating');
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 12;
 
-$where  = ['c.is_active = 1'];
+$where  = ['c.is_active = 1', 'c.is_verified = 1'];
 $params = [];
 
-if ($search) { $where[] = '(c.name LIKE ? OR c.description LIKE ?)'; $params[] = "%$search%"; $params[] = "%$search%"; }
+if ($search) { $where[] = '(c.name LIKE ? OR c.description LIKE ? OR c.accessibility_notes LIKE ?)'; $params[] = "%$search%"; $params[] = "%$search%"; $params[] = "%$search%"; }
 if ($city)   { $where[] = 'c.city = ?'; $params[] = $city; }
+if ($accessibleOnly) $where[] = "c.accessibility_notes IS NOT NULL AND TRIM(c.accessibility_notes)<>''";
 if ($service) {
     $where[] = 'EXISTS (SELECT 1 FROM services fs WHERE fs.clinic_id=c.id AND fs.is_active=1 AND (fs.name LIKE ? OR fs.description LIKE ? OR fs.service_type LIKE ?))';
     $params[] = "%$service%"; $params[] = "%$service%"; $params[] = "%$service%";
@@ -42,7 +44,7 @@ $stmt = getDB()->prepare("
 $stmt->execute($params);
 $clinics = $stmt->fetchAll();
 
-$cities = getDB()->query("SELECT DISTINCT city FROM clinics WHERE is_active=1 AND city IS NOT NULL ORDER BY city")->fetchAll(PDO::FETCH_COLUMN);
+$cities = getDB()->query("SELECT DISTINCT city FROM clinics WHERE is_active=1 AND is_verified=1 AND city IS NOT NULL ORDER BY city")->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <?php include __DIR__ . '/../includes/header.php'; ?>
 
@@ -51,7 +53,7 @@ $cities = getDB()->query("SELECT DISTINCT city FROM clinics WHERE is_active=1 AN
   <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));padding:3rem 0;color:#fff;text-align:center;">
     <div class="container">
       <h1 style="font-size:2.25rem;font-weight:800;margin-bottom:.5rem;">Find Clinics in Pangasinan</h1>
-      <p style="opacity:.9;font-size:1rem;">Browse <?= $total ?> verified veterinary and grooming centers</p>
+      <p style="opacity:.9;font-size:1rem;">Browse <?= $total ?> veterinary and grooming centers</p>
     </div>
   </div>
 
@@ -64,8 +66,9 @@ $cities = getDB()->query("SELECT DISTINCT city FROM clinics WHERE is_active=1 AN
             <label class="form-label">Search</label>
             <div style="position:relative;">
               <i class="fas fa-search" style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
-              <input type="text" name="search" class="form-control" placeholder="Clinic name, description…" value="<?= sanitize($search) ?>" style="padding-left:2.5rem;">
+              <input type="text" name="search" class="form-control" placeholder="Clinic, services, access info…" value="<?= sanitize($search) ?>" style="padding-left:2.5rem;">
             </div>
+            <label style="display:flex;align-items:center;gap:.4rem;margin-top:.6rem;font-size:.82rem;color:var(--text-muted);"><input type="checkbox" name="accessible" value="1" <?= $accessibleOnly?'checked':'' ?>> Accessibility information available</label>
           </div>
           <div class="form-group" style="margin:0;">
             <label class="form-label">City</label>

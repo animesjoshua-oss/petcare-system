@@ -14,6 +14,17 @@ $success = '';
 $error   = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['toggle_availability'])) {
+        if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+            $error = 'This request could not be verified. Please try again.';
+        } elseif ($gId) {
+            $available = (int)($_POST['is_available'] ?? 0) === 1 ? 1 : 0;
+            $db->prepare('UPDATE groomers SET is_available=?, updated_at=NOW() WHERE id=? AND user_id=?')->execute([$available, $gId, $user['id']]);
+            $gStmt = $db->prepare('SELECT * FROM groomers WHERE user_id=?');
+            $gStmt->execute([$user['id']]); $groomer = $gStmt->fetch();
+            $success = $available ? 'You are now available for appointments.' : 'You are now unavailable for appointments.';
+        }
+    } else {
     $bio            = trim($_POST['bio'] ?? '');
     $specialization = trim($_POST['specialization'] ?? '');
     $years_exp      = max(0, (int)($_POST['years_experience'] ?? 0));
@@ -36,14 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Could not save changes. Please try again.';
         }
     }
+    }
 }
 
-// Avg rating for display
-$stmtAvg = $db->prepare('SELECT COALESCE(AVG(groomer_rating),0), COUNT(*) FROM ratings WHERE groomer_id=? AND groomer_rating IS NOT NULL');
-$stmtAvg->execute([$gId]);
-[$avgRating, $totalRatings] = $stmtAvg->fetch(PDO::FETCH_NUM) ?: [0, 0];
-$avgRating    = (float)$avgRating;
-$totalRatings = (int)$totalRatings;
 ?>
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 <?php include __DIR__ . '/../../includes/sidebar_groomer.php'; ?>
@@ -79,6 +85,11 @@ $totalRatings = (int)$totalRatings;
         </div>
         <div style="font-weight:700;font-size:1.05rem;"><?= sanitize($user['first_name'].' '.$user['last_name']) ?></div>
         <div style="font-size:.8rem;color:var(--warning);font-weight:600;margin-bottom:.5rem;">Groomer</div>
+        <div style="margin:.65rem 0;"><span class="badge <?= !empty($groomer['is_available']) ? 'badge-success' : 'badge-secondary' ?>"><?= !empty($groomer['is_available']) ? 'Active · accepting appointments' : 'Inactive · not accepting appointments' ?></span></div>
+        <form method="POST" style="margin:.75rem 0;">
+          <?= csrfField() ?><input type="hidden" name="toggle_availability" value="1"><input type="hidden" name="is_available" value="<?= !empty($groomer['is_available']) ? 0 : 1 ?>">
+          <button type="submit" class="btn btn-sm <?= !empty($groomer['is_available']) ? 'btn-outline' : 'btn-primary' ?>" style="width:100%;justify-content:center;"><?= !empty($groomer['is_available']) ? 'Set yourself inactive' : 'Set yourself active' ?></button>
+        </form>
 
         <?php if (!empty($groomer['specialization'])): ?>
         <div style="display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center;margin-bottom:.75rem;">
@@ -94,20 +105,6 @@ $totalRatings = (int)$totalRatings;
         </div>
         <?php endif; ?>
 
-        <!-- Rating summary -->
-        <div style="padding:.75rem;background:var(--bg);border-radius:var(--radius-sm);margin-top:.5rem;">
-          <div style="font-size:2rem;font-weight:800;color:var(--warning);line-height:1;"><?= $totalRatings > 0 ? number_format($avgRating,1) : '—' ?></div>
-          <div style="font-size:.95rem;color:var(--warning);margin:.25rem 0;">
-            <?php for ($i=1;$i<=5;$i++): ?>
-              <i class="<?= ($totalRatings > 0 && $i <= round($avgRating)) ? 'fas' : 'far' ?> fa-star"></i>
-            <?php endfor; ?>
-          </div>
-          <div style="font-size:.75rem;color:var(--text-muted);"><?= $totalRatings ?> review<?= $totalRatings!=1?'s':'' ?></div>
-        </div>
-
-        <a href="ratings.php" class="btn btn-outline btn-sm" style="margin-top:1rem;width:100%;justify-content:center;">
-          <i class="fas fa-star"></i> View All Reviews
-        </a>
       </div>
     </div>
 
@@ -118,6 +115,7 @@ $totalRatings = (int)$totalRatings;
       </div>
       <div class="card-body">
         <form method="POST" action="">
+          <?= csrfField() ?>
 
           <div style="margin-bottom:1.25rem;">
             <label class="form-label">Years of Experience</label>

@@ -20,28 +20,16 @@ define('APP_NAME', 'PetCare+ Clinic Hub');
 define('APP_VERSION', '1.0.0');
 
 // ============================================================
-// DATABASE CONFIGURATION - Production
-// ============================================================
-define('APP_ENV', 'production');
-define('APP_URL', 'https://petcareplus.yzz.me');
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'yzzme_43078279');
-define('DB_USER', 'yzzme_43078279');
-define('DB_PASS', '4DfvsKy9U01X');
-define('DB_CHARSET', 'utf8mb4');
-
-// ============================================================
 // DATABASE CONFIGURATION - Local Development (XAMPP)
 // ============================================================
-/*
 define('APP_ENV', 'development');
 define('APP_URL', 'http://localhost/WEB%20petcare');
 define('DB_HOST', 'localhost');
+define('DB_PORT', '3306');
 define('DB_NAME', 'petcare_clinic_hub');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
-*/
 
 // ============================================================
 // API KEYS & EXTERNAL SERVICES

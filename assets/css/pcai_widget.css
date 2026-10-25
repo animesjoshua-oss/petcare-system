@@ -48,13 +48,13 @@
 /* ── Widget panel ──────────────────────────────────────────── */
 .pcai-widget {
   position: fixed;
-  bottom: 5.5rem;
+  bottom: 1rem;
   right: 1.5rem;
   z-index: 1199;
-  width: 320px;
+  width: min(420px, calc(100vw - 2rem));
   max-width: calc(100vw - 2rem);
   max-height: calc(100vh - 7rem);
-  height: 450px;
+  height: min(600px, calc(100vh - 7rem));
   display: flex;
   flex-direction: column;
   border-radius: 18px;
@@ -192,6 +192,28 @@
 }
 .pcai-msg-time { font-size: .65rem; color: #CBD5E1; margin-top: .2rem; }
 .pcai-msg.pcai-msg-user .pcai-msg-time { text-align: right; }
+
+.pcai-clinic-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin: -.3rem 0 .25rem 2.4rem;
+}
+.pcai-clinic-link {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #5B5BD6;
+  border-radius: 999px;
+  padding: .4rem .7rem;
+  background: #EEF2FF;
+  color: #4338CA !important;
+  text-decoration: none;
+  font-size: .75rem;
+  font-weight: 600;
+}
+.pcai-clinic-link:hover { background: #5B5BD6; color: #fff !important; }
+[data-theme="dark"] .pcai-clinic-link { background: #252838; color: #C7D2FE !important; }
+[data-theme="dark"] .pcai-clinic-link:hover { background: #5B5BD6; color: #fff !important; }
 
 /* Typing indicator */
 .pcai-typing-dot {
@@ -343,10 +365,10 @@
     width: 48px; height: 48px; font-size: 1.1rem;
   }
   .pcai-widget {
-    bottom: calc(64px + env(safe-area-inset-bottom,0px) + 4.5rem);
+    bottom: calc(64px + env(safe-area-inset-bottom,0px) + .75rem);
     right: .75rem;
     width: calc(100vw - 1.5rem);
     max-height: calc(100vh - 64px - env(safe-area-inset-bottom,0px) - 5.5rem);
-    height: 450px;
+    height: min(70vh, 620px);
   }
 }

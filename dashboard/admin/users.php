@@ -17,13 +17,34 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['add_user'])) {
         $phone  = sanitize($_POST['phone']??'');
         $roleId = (int)($_POST['role_id']??1);
         $pass   = $_POST['password']??'Admin@1234';
+        $ownerRoleQuery=$db->prepare("SELECT id FROM roles WHERE name='pet_owner' LIMIT 1");
+        $ownerRoleQuery->execute(); $ownerRoleId=(int)$ownerRoleQuery->fetchColumn();
 
-        $chk=$db->prepare('SELECT id FROM users WHERE email=?'); $chk->execute([$email]);
-        if ($chk->fetch()) { $msg='Email already exists.'; $msgType='danger'; }
-        else {
-            $db->prepare('INSERT INTO users (role_id,first_name,last_name,email,phone,password_hash,is_active,is_email_verified) VALUES (?,?,?,?,?,?,1,1)')
-               ->execute([$roleId,$first,$last,$email,$phone,hashPassword($pass)]);
-            $msg="User $first $last added.";
+        if ($roleId !== $ownerRoleId) {
+            $msg = 'Clinic Vet Admins are created through approved clinic applications. Veterinarians and groomers are added by their clinic Vet Admin.';
+            $msgType = 'danger';
+        } elseif (!$first || !$last || !$email) {
+            $msg = 'Please fill all required fields.';
+            $msgType = 'danger';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $msg = 'Please provide a valid email address.';
+            $msgType = 'danger';
+        } else {
+            $chk=$db->prepare('SELECT id FROM users WHERE email=?'); $chk->execute([$email]);
+            if ($chk->fetch()) { 
+                $msg='Email already exists.'; 
+                $msgType='danger'; 
+            } else {
+                try {
+                    $db->prepare('INSERT INTO users (role_id,first_name,last_name,email,phone,password_hash,is_active,is_email_verified) VALUES (?,?,?,?,?,?,1,1)')
+                       ->execute([$roleId,$first,$last,$email,$phone,hashPassword($pass)]);
+                    $msg="User <strong>$first $last</strong> added successfully! Default password: <code>Admin@1234</code>";
+                    $msgType='success';
+                } catch (\Exception $e) {
+                    $msg='Failed to add user. Please try again.';
+                    $msgType='danger';
+                }
+            }
         }
     }
 }
@@ -130,22 +151,12 @@ if (isset($_GET['lift_restriction']) && verifyCsrfToken($_GET['csrf']??'')) {
 
 $search  = sanitize($_GET['search']??'');
 $roleF   = sanitize($_GET['role']??'');
-$filterP          = isset($_GET['filter']) && $_GET['filter'] === 'pending';
 $filterInactive   = isset($_GET['filter']) && $_GET['filter'] === 'inactive';
 $filterRestricted = isset($_GET['filter']) && $_GET['filter'] === 'restricted';
 $page    = max(1,(int)($_GET['page']??1)); $perPage=20;
 $where=['u.id > 0']; $params=[];
 if ($search)          { $where[]='(u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)'; $params[]="%$search%"; $params[]="%$search%"; $params[]="%$search%"; }
 if ($roleF)           { $where[]='r.name=?'; $params[]=$roleF; }
-// Only add id_document_path filter if column exists
-$hasIdCols = false;
-try {
-    $db->query("SELECT id_document_path FROM users LIMIT 1");
-    $hasIdCols = true;
-} catch (\Exception $e) { $hasIdCols = false; }
-if ($filterP && $hasIdCols) { $where[]='u.is_active=0'; $where[]='u.id_document_path IS NOT NULL'; $where[]='u.inactivity_deactivated_at IS NULL'; }
-elseif ($filterP)           { $where[]='u.is_active=0'; }
-
 // Inactive filter: auto-deactivated users
 if ($filterInactive) { $where[]='u.is_active=0'; $where[]='u.inactivity_deactivated_at IS NOT NULL'; }
 
@@ -153,13 +164,6 @@ if ($filterInactive) { $where[]='u.is_active=0'; $where[]='u.inactivity_deactiva
 if ($filterRestricted) { $where[]='u.is_booking_restricted=1'; }
 
 $ws='WHERE '.implode(' AND ',$where);
-
-// Count badges for tabs
-try {
-    $pendingCount = $hasIdCols
-        ? (int)$db->query("SELECT COUNT(*) FROM users WHERE is_active=0 AND id_document_path IS NOT NULL AND (inactivity_deactivated_at IS NULL OR inactivity_deactivated_at='0000-00-00 00:00:00')")->fetchColumn()
-        : 0;
-} catch(\Exception $e) { $pendingCount = 0; }
 
 // Count auto-deactivated inactive users
 try {
@@ -173,9 +177,9 @@ try {
 
 $total=$db->prepare("SELECT COUNT(*) FROM users u JOIN roles r ON u.role_id=r.id $ws"); $total->execute($params); $total=(int)$total->fetchColumn();
 $pg=getPaginationData($total,$page,$perPage);
-$users=$db->prepare("SELECT u.*,r.name AS role_name FROM users u JOIN roles r ON u.role_id=r.id $ws ORDER BY u.created_at DESC LIMIT {$pg['perPage']} OFFSET {$pg['offset']}");
+$users=$db->prepare("SELECT u.*,r.name AS role_name,(SELECT c.clinic_type FROM clinics c WHERE c.admin_id=u.id ORDER BY c.is_active DESC,c.id LIMIT 1) AS clinic_type FROM users u JOIN roles r ON u.role_id=r.id $ws ORDER BY u.created_at DESC LIMIT {$pg['perPage']} OFFSET {$pg['offset']}");
 $users->execute($params); $users=$users->fetchAll();
-$roles=$db->query('SELECT * FROM roles ORDER BY id')->fetchAll();
+$roles=$db->query("SELECT * FROM roles WHERE name='pet_owner' ORDER BY id")->fetchAll();
 ?>
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 <?php include __DIR__ . '/../../includes/sidebar_admin.php'; ?>
@@ -192,27 +196,21 @@ $roles=$db->query('SELECT * FROM roles ORDER BY id')->fetchAll();
 
   <?php if ($msg): ?><div class="alert alert-<?= $msgType ?>" data-auto-dismiss="4000"><i class="fas fa-check-circle"></i><?= $msg ?></div><?php endif; ?>
 
-  <!-- Pending / All / Inactive / Restricted tabs -->
-  <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
-    <a href="users.php" class="btn <?= !$filterP && !$filterInactive && !$filterRestricted ? 'btn-primary' : 'btn-outline' ?>" style="font-size:.875rem;">
+  <!-- All / Inactive / Restricted tabs -->
+  <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;padding:10px 0;overflow:visible;">
+    <a href="users.php" class="btn <?= !$filterInactive && !$filterRestricted ? 'btn-primary' : 'btn-outline' ?>" style="font-size:.875rem;">
       <i class="fas fa-users"></i> All Users
     </a>
-    <a href="users.php?filter=pending" class="btn <?= $filterP ? 'btn-warning' : 'btn-outline' ?>" style="font-size:.875rem;position:relative;">
-      <i class="fas fa-clock"></i> Pending Approval
-      <?php if ($pendingCount > 0): ?>
-        <span style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border-radius:50%;width:18px;height:18px;font-size:.7rem;display:flex;align-items:center;justify-content:center;font-weight:700;"><?= $pendingCount ?></span>
-      <?php endif; ?>
-    </a>
-    <a href="users.php?filter=inactive" class="btn <?= $filterInactive ? 'btn-secondary' : 'btn-outline' ?>" style="font-size:.875rem;position:relative;">
+    <a href="users.php?filter=inactive" class="btn <?= $filterInactive ? 'btn-secondary' : 'btn-outline' ?>" style="font-size:.875rem;position:relative;overflow:visible;">
       <i class="fas fa-user-slash"></i> Inactive (Auto-Deactivated)
       <?php if ($inactiveCount > 0): ?>
-        <span style="position:absolute;top:-6px;right:-6px;background:var(--text-muted);color:#fff;border-radius:50%;width:18px;height:18px;font-size:.7rem;display:flex;align-items:center;justify-content:center;font-weight:700;"><?= $inactiveCount ?></span>
+        <span style="position:absolute;top:-8px;right:-8px;background:#64748B;color:#fff;border-radius:50%;width:20px;height:20px;font-size:.7rem;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 4px rgba(0,0,0,0.2);z-index:10;"><?= $inactiveCount ?></span>
       <?php endif; ?>
     </a>
-    <a href="users.php?filter=restricted" class="btn <?= $filterRestricted ? 'btn-danger' : 'btn-outline' ?>" style="font-size:.875rem;position:relative;">
+    <a href="users.php?filter=restricted" class="btn <?= $filterRestricted ? 'btn-danger' : 'btn-outline' ?>" style="font-size:.875rem;position:relative;overflow:visible;">
       <i class="fas fa-ban"></i> Booking Restricted
       <?php if ($restrictedCount > 0): ?>
-        <span style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border-radius:50%;width:18px;height:18px;font-size:.7rem;display:flex;align-items:center;justify-content:center;font-weight:700;"><?= $restrictedCount ?></span>
+        <span style="position:absolute;top:-8px;right:-8px;background:#EF4444;color:#fff;border-radius:50%;width:20px;height:20px;font-size:.7rem;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 4px rgba(0,0,0,0.2);z-index:10;"><?= $restrictedCount ?></span>
       <?php endif; ?>
     </a>
   </div>
@@ -234,18 +232,15 @@ $roles=$db->query('SELECT * FROM roles ORDER BY id')->fetchAll();
 
   <div class="card">
     <div class="table-wrap" style="overflow-x:auto;">
-      <table style="min-width:1200px;width:100%;table-layout:fixed;">
+      <table style="min-width:1010px;width:100%;table-layout:fixed;">
         <colgroup>
           <col style="width:50px;"><!-- # -->
-          <col style="width:180px;"><!-- Name -->
-          <col style="width:200px;"><!-- Email/Phone -->
-          <col style="width:110px;"><!-- Role -->
-          <col style="width:120px;"><!-- ID Verify -->
-          <col style="width:120px;"><!-- Status -->
-          <col style="width:80px;"><!-- No-Shows -->
-          <col style="width:110px;"><!-- Last Login -->
-          <col style="width:100px;"><!-- Joined -->
-          <col style="width:130px;"><!-- Actions -->
+          <col style="width:200px;"><!-- Name -->
+          <col style="width:220px;"><!-- Email/Phone -->
+          <col style="width:130px;"><!-- Role -->
+          <col style="width:140px;"><!-- Status -->
+          <col style="width:130px;"><!-- Joined -->
+          <col style="width:140px;"><!-- Actions -->
         </colgroup>
         <thead>
           <tr>
@@ -253,10 +248,7 @@ $roles=$db->query('SELECT * FROM roles ORDER BY id')->fetchAll();
             <th style="vertical-align:middle;">Name</th>
             <th style="vertical-align:middle;">Email / Phone</th>
             <th style="vertical-align:middle;">Role</th>
-            <th style="vertical-align:middle;">ID Verify</th>
             <th style="vertical-align:middle;">Status</th>
-            <th style="vertical-align:middle;text-align:center;">No-Shows</th>
-            <th style="vertical-align:middle;">Last Login</th>
             <th style="vertical-align:middle;">Joined</th>
             <th style="vertical-align:middle;">Actions</th>
           </tr>
@@ -287,31 +279,8 @@ $roles=$db->query('SELECT * FROM roles ORDER BY id')->fetchAll();
           </td>
           <td style="vertical-align:middle;">
             <span class="badge badge-<?= $u['role_name']==='pet_owner'?'primary':($u['role_name']==='veterinarian'?'success':($u['role_name']==='groomer'?'warning':'danger')) ?>">
-              <?= displayRoleName($u['role_name']) ?>
+              <?= displayRoleName($u['role_name'], $u['clinic_type'] ?? null) ?>
             </span>
-          </td>
-          <td style="vertical-align:middle;">
-            <?php if (!empty($u['id_verified'])): ?>
-              <span class="badge badge-success"><i class="fas fa-check-circle"></i> Verified</span>
-            <?php elseif (!empty($u['id_document_path'])): ?>
-              <span class="badge badge-warning"><i class="fas fa-clock"></i> Pending</span>
-            <?php else: ?>
-              <span class="badge badge-secondary"><i class="fas fa-times-circle"></i> None</span>
-            <?php endif; ?>
-            <?php if (!empty($u['id_document_path'])): ?>
-              <br>
-              <button type="button" class="btn btn-sm btn-outline review-id-btn" style="margin-top:.3rem;font-size:.72rem;padding:.2rem .55rem;"
-                data-uid="<?= $u['id'] ?>"
-                data-name="<?= htmlspecialchars($u['first_name'].' '.$u['last_name'], ENT_QUOTES) ?>"
-                data-email="<?= htmlspecialchars($u['email'], ENT_QUOTES) ?>"
-                data-idtype="<?= htmlspecialchars($u['id_document_type'] ?? '', ENT_QUOTES) ?>"
-                data-idnum="<?= htmlspecialchars($u['id_document_number'] ?? '', ENT_QUOTES) ?>"
-                data-front="<?= APP_URL ?>/api/admin-id-document.php?user_id=<?= (int)$u['id'] ?>&amp;side=front"
-                data-back="<?= APP_URL ?>/api/admin-id-document.php?user_id=<?= (int)$u['id'] ?>&amp;side=back"
-                onclick="reviewID(this.dataset.uid,this.dataset.name,this.dataset.email,this.dataset.idtype,this.dataset.idnum,this.dataset.front,this.dataset.back)">
-                <i class="fas fa-search"></i> Review ID
-              </button>
-            <?php endif; ?>
           </td>
           <td style="vertical-align:middle;">
             <?= $u['is_active'] ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>' ?>
@@ -320,35 +289,6 @@ $roles=$db->query('SELECT * FROM roles ORDER BY id')->fetchAll();
             <?php endif; ?>
             <?php if (!empty($u['is_booking_restricted'])): ?>
               <br><span class="badge badge-danger" style="font-size:.7rem;margin-top:.2rem;"><i class="fas fa-ban"></i> Booking restricted</span>
-            <?php endif; ?>
-          </td>
-          <td style="vertical-align:middle;text-align:center;">
-            <?php $ns = (int)($u['no_show_count'] ?? 0); ?>
-            <?php if ($ns >= 3): ?>
-              <span class="badge badge-danger" title="<?= $ns ?> no-shows — booking restricted"><i class="fas fa-ban"></i> <?= $ns ?></span>
-            <?php elseif ($ns === 2): ?>
-              <span class="badge badge-warning" title="<?= $ns ?> no-shows — final warning"><i class="fas fa-exclamation-triangle"></i> <?= $ns ?></span>
-            <?php elseif ($ns === 1): ?>
-              <span class="badge badge-info" title="1 no-show"><i class="fas fa-flag"></i> <?= $ns ?></span>
-            <?php else: ?>
-              <span style="color:var(--text-muted);font-size:.82rem;">—</span>
-            <?php endif; ?>
-          </td>
-          <td style="vertical-align:middle;font-size:.82rem;">
-            <?php if (!empty($u['last_login'])): ?>
-              <?php
-                $lastLogin   = new DateTime($u['last_login']);
-                $now         = new DateTime();
-                $daysAgo     = (int)$now->diff($lastLogin)->days;
-              ?>
-              <div><?= date('M j, Y', strtotime($u['last_login'])) ?></div>
-              <div style="color:<?= $daysAgo >= 90 ? 'var(--danger)' : ($daysAgo >= 30 ? 'var(--warning)' : 'var(--text-muted)') ?>;font-size:.75rem;">
-                <?= $daysAgo === 0 ? 'Today' : $daysAgo . 'd ago' ?>
-                <?php if ($daysAgo >= 90): ?> <i class="fas fa-exclamation-circle" title="Inactive 90+ days"></i><?php endif; ?>
-                <?php if ($daysAgo >= 30 && $daysAgo < 90): ?> <i class="fas fa-clock" title="Inactive 30+ days"></i><?php endif; ?>
-              </div>
-            <?php else: ?>
-              <span style="color:var(--text-muted);">Never</span>
             <?php endif; ?>
           </td>
           <td style="vertical-align:middle;font-size:.82rem;">

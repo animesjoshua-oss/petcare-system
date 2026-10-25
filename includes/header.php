@@ -67,7 +67,6 @@ $isDashboard = isset($isDashboard) ? (bool)$isDashboard : (strpos($scriptPath, '
         <ul class="nav-menu" id="navMenu">
             <li><a href="<?= APP_URL ?>/index.php" class="nav-link">Home</a></li>
             <li><a href="<?= APP_URL ?>/clinics.php" class="nav-link">Clinics</a></li>
-            <li><a href="<?= APP_URL ?>/pages/contact.php" class="nav-link">Contact</a></li>
         </ul>
 
         <!-- Auth Buttons / User Menu -->
@@ -222,7 +221,6 @@ $isDashboard = isset($isDashboard) ? (bool)$isDashboard : (strpos($scriptPath, '
     <?php endif; ?>
     <div class="mobile-menu-row">
         <a href="<?= APP_URL ?>/index.php#about" class="mobile-link"><span class="mobile-icon">ⓘ</span> About</a>
-        <a href="<?= APP_URL ?>/pages/contact.php" class="mobile-link"><span class="mobile-icon">📞</span> Contact</a>
     </div>
     <?php if (!$user): ?>
     <div class="mobile-menu-auth">
@@ -370,30 +368,134 @@ $isDashboard = isset($isDashboard) ? (bool)$isDashboard : (strpos($scriptPath, '
     var html = '';
     notifs.forEach(function(n) {
       var unread = !parseInt(n.is_read);
-      html += '<div class="notif-dp-item' + (unread ? ' unread' : '') + '" data-id="' + n.id + '">' +
-        '<div class="notif-dp-icon"><i class="fas ' + iconFor(n.type) + '"></i></div>' +
-        '<div class="notif-dp-body">' +
-          '<div class="notif-dp-msg">' + (n.message || '') + '</div>' +
-          '<div class="notif-dp-time">' + timeAgo(n.created_at) + '</div>' +
+      var link = n.link || '';
+      html += '<div class="notif-dp-item-wrapper" data-id="' + n.id + '">' +
+        '<div class="notif-dp-item' + (unread ? ' unread' : '') + '" data-link="' + link + '" style="cursor:pointer;">' +
+          '<div class="notif-dp-icon"><i class="fas ' + iconFor(n.type) + '"></i></div>' +
+          '<div class="notif-dp-body">' +
+            '<div class="notif-dp-msg">' + (n.message || '') + '</div>' +
+            '<div class="notif-dp-time">' + timeAgo(n.created_at) + '</div>' +
+          '</div>' +
+          (unread ? '<div class="notif-dp-unread-dot"></div>' : '') +
         '</div>' +
-        (unread ? '<div class="notif-dp-unread-dot"></div>' : '') +
+        '<button class="notif-dp-delete" data-id="' + n.id + '" title="Delete notification"><i class="fas fa-trash"></i></button>' +
       '</div>';
     });
     list.innerHTML = html;
 
-    // Click item → mark as read
+    // Click item → mark as read and redirect
     list.querySelectorAll('.notif-dp-item').forEach(function(el) {
-      el.addEventListener('click', function() {
-        var id = el.dataset.id;
+      var wrapper = el.parentElement;
+      var startX = 0, currentX = 0, isDragging = false;
+      
+      // Touch/Mouse events for swipe
+      el.addEventListener('touchstart', handleStart, { passive: true });
+      el.addEventListener('mousedown', handleStart);
+      
+      function handleStart(e) {
+        startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        isDragging = true;
+        el.style.transition = 'none';
+      }
+      
+      el.addEventListener('touchmove', handleMove, { passive: false });
+      el.addEventListener('mousemove', handleMove);
+      
+      function handleMove(e) {
+        if (!isDragging) return;
+        currentX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+        var diff = currentX - startX;
+        
+        // Only allow left swipe (negative diff)
+        if (diff < 0 && diff > -100) {
+          e.preventDefault();
+          el.style.transform = 'translateX(' + diff + 'px)';
+        }
+      }
+      
+      el.addEventListener('touchend', handleEnd);
+      el.addEventListener('mouseup', handleEnd);
+      el.addEventListener('mouseleave', handleEnd);
+      
+      function handleEnd(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        el.style.transition = 'transform 0.3s ease';
+        
+        var diff = currentX - startX;
+        
+        // If swiped more than 60px to the left, show delete button
+        if (diff < -60) {
+          el.style.transform = 'translateX(-80px)';
+          wrapper.classList.add('swiped');
+        } else {
+          el.style.transform = 'translateX(0)';
+          wrapper.classList.remove('swiped');
+        }
+        
+        currentX = 0;
+        startX = 0;
+      }
+      
+      // Click to navigate
+      el.addEventListener('click', function(e) {
+        // Don't navigate if swiped
+        if (wrapper.classList.contains('swiped')) {
+          el.style.transform = 'translateX(0)';
+          wrapper.classList.remove('swiped');
+          return;
+        }
+        
+        var id = wrapper.dataset.id;
+        var link = el.dataset.link;
+        
+        // Mark as read
         fetch('<?= APP_URL ?>/api/notifications.php?action=mark_read', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
           body: JSON.stringify({ id: id })
+        }).then(function() {
+          // Redirect to notification link if available
+          if (link && link !== '' && link !== '#') {
+            window.location.href = link;
+          }
         });
+        
         el.classList.remove('unread');
         var dot = el.querySelector('.notif-dp-unread-dot');
         if (dot) dot.remove();
         updateBadge();
+      });
+    });
+    
+    // Delete button click
+    list.querySelectorAll('.notif-dp-delete').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var id = btn.dataset.id;
+        var wrapper = btn.parentElement;
+        
+        // Animate removal
+        wrapper.style.transition = 'all 0.3s ease';
+        wrapper.style.opacity = '0';
+        wrapper.style.transform = 'translateX(-100%)';
+        
+        setTimeout(function() {
+          // Delete from server
+          fetch('<?= APP_URL ?>/api/notifications.php?action=delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
+            body: JSON.stringify({ id: id })
+          }).then(function() {
+            wrapper.remove();
+            updateBadge();
+            
+            // Check if no notifications left
+            if (list.querySelectorAll('.notif-dp-item-wrapper').length === 0) {
+              list.innerHTML = '<div class="notif-dp-empty"><i class="fas fa-bell-slash"></i><span>No notifications yet</span></div>';
+            }
+          });
+        }, 300);
       });
     });
   }

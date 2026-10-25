@@ -3,12 +3,14 @@ require_once __DIR__ . '/includes/functions.php';
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) { header('Location: clinics.php'); exit; }
 
-$stmt = getDB()->prepare('SELECT c.* FROM clinics c WHERE c.id=? AND c.is_active=1');
+$stmt = getDB()->prepare('SELECT c.* FROM clinics c WHERE c.id=? AND c.is_active=1 AND c.is_verified=1');
 $stmt->execute([$id]);
 $clinic = $stmt->fetch();
 if (!$clinic) { header('Location: clinics.php'); exit; }
 
 $pageTitle = $clinic['name'];
+$serviceFilter = (string)($_GET['service_type'] ?? '');
+if (!in_array($serviceFilter, ['', 'veterinary', 'grooming'], true)) $serviceFilter = '';
 
 // Vets (with average rating)
 $vets = getDB()->prepare('
@@ -37,7 +39,11 @@ $groomers = getDB()->prepare('
 $groomers->execute([$id]); $groomers = $groomers->fetchAll();
 
 // Services
-$services = getDB()->prepare('SELECT * FROM services WHERE clinic_id=? AND is_active=1 ORDER BY service_type, name');
+$serviceSql = 'SELECT * FROM services WHERE clinic_id=? AND is_active=1';
+if ($serviceFilter === 'veterinary') $serviceSql .= " AND service_type IN ('veterinary','both')";
+if ($serviceFilter === 'grooming') $serviceSql .= " AND service_type IN ('grooming','both')";
+$serviceSql .= ' ORDER BY service_type, name';
+$services = getDB()->prepare($serviceSql);
 $services->execute([$id]); $services = $services->fetchAll();
 
 // Ratings
@@ -308,7 +314,7 @@ if (!empty($operatingHours)) {
 
         <!-- Services -->
         <div class="card" style="margin-bottom:1.5rem;"><div class="card-body">
-          <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:1.25rem;"><i class="fas fa-list" style="color:var(--primary);margin-right:.5rem"></i>Services Offered</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;"><h3 style="font-size:1.1rem;font-weight:700;margin:0;"><i class="fas fa-list" style="color:var(--primary);margin-right:.5rem"></i>Services Offered</h3><form method="GET" style="display:flex;align-items:center;gap:.5rem;"><input type="hidden" name="id" value="<?= (int)$id ?>"><label for="serviceTypeFilter" class="form-label" style="margin:0;white-space:nowrap;">Show</label><select id="serviceTypeFilter" name="service_type" class="form-control" aria-label="Filter services by service type" onchange="this.form.submit()"><option value="" <?= $serviceFilter === '' ? 'selected' : '' ?>>All services</option><option value="veterinary" <?= $serviceFilter === 'veterinary' ? 'selected' : '' ?>>Veterinarian</option><option value="grooming" <?= $serviceFilter === 'grooming' ? 'selected' : '' ?>>Groomer</option></select></form></div>
           <?php if ($services): ?>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
             <?php foreach ($services as $svc): ?>
@@ -316,6 +322,7 @@ if (!empty($operatingHours)) {
               <div>
                 <div style="font-weight:600;font-size:.9rem;"><?= sanitize($svc['name']) ?></div>
                 <?php if ($svc['duration_minutes']): ?><div style="font-size:.78rem;color:var(--text-muted)"><?= $svc['duration_minutes'] ?> min</div><?php endif; ?>
+                <?php foreach (serviceDiscountsForService($svc, $serviceFilter !== '' ? $serviceFilter : null) as $discount): ?><div style="font-size:.75rem;color:var(--success);font-weight:600;"><?= sanitize($discount['label']) ?>: <?= sanitize($discount['details']) ?></div><?php endforeach; ?>
               </div>
               <?php if ($svc['price']): ?><span style="font-weight:700;color:var(--primary);font-size:.9rem;">₱<?= number_format($svc['price'],0) ?></span><?php endif; ?>
             </div>
@@ -447,7 +454,7 @@ if (!empty($operatingHours)) {
                   <div style="font-size:.75rem;color:var(--text-muted)"><?= timeAgo($r['created_at']) ?></div>
                 </div>
               </div>
-              <div class="stars"><?= str_repeat('<i class="fas fa-star"></i>', (int)$r['clinic_rating']) ?></div>
+              <?= starRating((float)$r['clinic_rating'], false) ?>
             </div>
             <?php if ($r['comment']): ?><p style="font-size:.875rem;color:var(--text-muted);line-height:1.7;"><?= sanitize($r['comment']) ?></p><?php endif; ?>
           </div>

@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove'])) {
     header('Location: favorites.php?removed=1'); exit;
 }
 
-$favs = $db->prepare("SELECT c.*,COALESCE(AVG(r.clinic_rating),0) AS avg_rating,COUNT(DISTINCT r.id) AS rcount FROM favorite_clinics fc JOIN clinics c ON fc.clinic_id=c.id LEFT JOIN ratings r ON r.clinic_id=c.id WHERE fc.user_id=? GROUP BY c.id ORDER BY fc.created_at DESC");
+$favs = $db->prepare("SELECT c.*,COALESCE(AVG(r.clinic_rating),0) AS avg_rating,COUNT(DISTINCT r.id) AS rcount FROM favorite_clinics fc JOIN clinics c ON fc.clinic_id=c.id LEFT JOIN ratings r ON r.clinic_id=c.id WHERE fc.user_id=? AND c.is_active=1 AND c.is_verified=1 GROUP BY c.id ORDER BY fc.created_at DESC");
 $favs->execute([$user['id']]); $favs=$favs->fetchAll();
 ?>
 <?php include __DIR__ . '/../../includes/header.php'; ?>

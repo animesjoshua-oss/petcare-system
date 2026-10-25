@@ -23,7 +23,7 @@ $stmt = getDB()->query("SELECT c.*, c.average_rating AS avg_rating, c.total_rati
     FROM clinics c
     LEFT JOIN (SELECT clinic_id, GROUP_CONCAT(DISTINCT name ORDER BY name SEPARATOR '||') AS service_tags
                FROM services WHERE is_active=1 GROUP BY clinic_id) svc ON svc.clinic_id=c.id
-    WHERE c.is_active=1
+    WHERE c.is_active=1 AND c.is_verified=1
     ORDER BY (c.cover_photo IS NOT NULL AND c.cover_photo != '') DESC, c.city ASC, c.name ASC LIMIT 6");
 $featuredClinics = $stmt->fetchAll();
 ?>
@@ -35,8 +35,9 @@ $featuredClinics = $stmt->fetchAll();
   <!-- Background image with overlay -->
   <div class="hero-bg">
     <picture>
-      <source media="(max-width: 768px)" srcset="assets/images/landing page/image0.png" data-light-src="assets/images/landing page/image0.png" data-dark-src="assets/images/landing page/image0.png">
-      <img src="assets/images/landing page/image0.png" alt="Happy pet owner with dog" class="hero-bg-img" id="heroBgImg" data-light-src="assets/images/landing page/image0.png" data-dark-src="assets/images/landing page/image0.png">
+      <source media="(max-width: 768px)" srcset="assets/images/landing page - for moblie run/mobile0.png">
+      <source media="(min-width: 769px)" srcset="assets/images/landing page/image0.png">
+      <img src="assets/images/landing page - for moblie run/mobile0.png" alt="Happy pet owner with dog" class="hero-bg-img" id="heroBgImg">
     </picture>
     <div class="hero-bg-overlay"></div>
     <!-- Decorative gradient orbs -->
@@ -67,10 +68,10 @@ $featuredClinics = $stmt->fetchAll();
 
       <!-- CTA Buttons -->
       <div class="hero-premium-actions">
-        <a href="<?= isLoggedIn() ? 'pages/clinics.php' : 'auth/register.php' ?>" class="btn-hero-primary">
-          <i class="fas fa-hospital"></i> Find a Clinic
+        <a href="<?= isLoggedIn() ? APP_URL . '/clinics.php' : APP_URL . '/auth/register.php' ?>" class="btn-hero-primary">
+          <i class="fas fa-rocket"></i> Get Started
         </a>
-        <a href="pages/clinics.php" class="btn-hero-secondary">
+        <a href="<?= APP_URL ?>/clinics.php" class="btn-hero-secondary">
           <i class="fas fa-map-marker-alt"></i> Find Clinics
         </a>
       </div>
@@ -88,7 +89,7 @@ $featuredClinics = $stmt->fetchAll();
     <span class="marquee-item"><i class="fas fa-paw"></i> Trusted Veterinary Network <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-calendar-check"></i> Easy line Booking <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-robot"></i> AI Health Insights <span class="marquee-dot"></span></span>
-    <span class="marquee-item"><i class="fas fa-star"></i> Verified Clinics &amp; Groomers <span class="marquee-dot"></span></span>
+    <span class="marquee-item"><i class="fas fa-star"></i> Veterinary Clinics &amp; Groomers <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-shield-alt"></i> Licensed Professionals <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-map-marker-alt"></i> Serving All of Pangasinan <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-file-medical"></i> Digital Pet Health Records <span class="marquee-dot"></span></span>
@@ -97,7 +98,7 @@ $featuredClinics = $stmt->fetchAll();
     <span class="marquee-item"><i class="fas fa-paw"></i> Trusted Veterinary Network <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-calendar-check"></i> Easy line Booking <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-robot"></i> AI Health Insights <span class="marquee-dot"></span></span>
-    <span class="marquee-item"><i class="fas fa-star"></i> Verified Clinics &amp; Groomers <span class="marquee-dot"></span></span>
+    <span class="marquee-item"><i class="fas fa-star"></i> Veterinary Clinics &amp; Groomers <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-shield-alt"></i> Licensed Professionals <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-map-marker-alt"></i> Serving All of Pangasinan <span class="marquee-dot"></span></span>
     <span class="marquee-item"><i class="fas fa-file-medical"></i> Digital Pet Health Records <span class="marquee-dot"></span></span>
@@ -109,7 +110,6 @@ $featuredClinics = $stmt->fetchAll();
 <section class="section" id="clinics-section">
   <div class="container">
     <div class="section-header reveal">
-      <div class="section-tag">Clinics</div>
       <h2>Featured Clinics in Pangasinan</h2>
       <p>Discover top-rated veterinary clinics and grooming centers near you.</p>
     </div>
@@ -118,12 +118,12 @@ $featuredClinics = $stmt->fetchAll();
       <div class="empty-state" style="grid-column:1/-1">
         <i class="fas fa-hospital"></i>
         <h3>Clinics coming soon</h3>
-        <p>No clinics registered yet. <a href="auth/register.php">Register your clinic</a></p>
+        <p>No clinics registered yet. <a href="pages/apply-clinic.php">Apply to register your clinic</a></p>
       </div>
       <?php endif; ?>
     </div>
     <div class="text-center mt-4">
-      <a href="pages/clinics.php" class="btn btn-primary">View All Clinics <i class="fas fa-arrow-right"></i></a>
+      <a href="<?= APP_URL ?>/clinics.php" class="btn btn-primary">View All Clinics <i class="fas fa-arrow-right"></i></a>
     </div>
   </div>
 </section>
@@ -167,19 +167,41 @@ $featuredClinics = $stmt->fetchAll();
 <script>
 // ========== HERO IMAGE SLIDER (Auto-rotate every 5 seconds) ==========
 (function() {
-  const images = [
+  // Desktop images
+  const desktopImages = [
     'assets/images/landing page/image0.png',  // START IMAGE
     'assets/images/landing page/image1.jpg',
     'assets/images/landing page/image2.jpg',
     'assets/images/landing page/image3.jpg',
-    'assets/images/landing page/image4.jpg'
+    'assets/images/landing page/image4.jpg',
+    'assets/images/landing page/image5.jpg',
+    'assets/images/landing page/image6.png'
   ];
+  
+  // Mobile images (portrait-optimized)
+  const mobileImages = [
+    'assets/images/landing page - for moblie run/mobile0.png',
+    'assets/images/landing page - for moblie run/mobile1.png',
+    'assets/images/landing page - for moblie run/mobile2.png',
+    'assets/images/landing page - for moblie run/mobile3.png',
+    'assets/images/landing page - for moblie run/mobile4.png',
+    'assets/images/landing page - for moblie run/mobile5.png',
+    'assets/images/landing page - for moblie run/mobile6.png'
+  ];
+  
+  // Detect if mobile device (screen width <= 768px)
+  const isMobile = window.innerWidth <= 768;
+  const images = isMobile ? mobileImages : desktopImages;
   
   let currentIndex = 0;
   const heroImg = document.getElementById('heroBgImg');
   const heroSource = document.querySelector('.hero-bg picture source');
   
   if (heroImg && heroSource) {
+    // Set initial image based on device
+    heroImg.src = images[0];
+    heroSource.srcset = images[0];
+    
     // Preload all images
     images.forEach(src => {
       const img = new Image();
@@ -206,6 +228,18 @@ $featuredClinics = $stmt->fetchAll();
       
     }, 5000); // 5000ms = 5 seconds
   }
+  
+  // Update images on window resize (if user rotates device or resizes browser)
+  let resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      const nowMobile = window.innerWidth <= 768;
+      if (nowMobile !== isMobile) {
+        location.reload(); // Reload to switch image set
+      }
+    }, 250);
+  });
 })();
 </script>
 

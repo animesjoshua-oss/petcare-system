@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/mailer.php';
 requireLogin(); requireRole(['admin','superadmin']);
 $user = currentUser();
+if (isGroomerAdmin($user)) { header('Location: ' . APP_URL . '/auth/unauthorized.php'); exit; }
 $pageTitle   = 'Contact Messages';
 $isDashboard = true;
 $db  = getDB();

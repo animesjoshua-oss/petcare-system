@@ -10,7 +10,14 @@ $user       = currentUser();
 $isDashboard = true;
 $db         = getDB();
 
-$pendingAppts = (int)$db->query("SELECT COUNT(*) FROM appointments WHERE status='pending'")->fetchColumn();
+$isSuperAdmin = ($user['role_name'] ?? '') === 'superadmin';
+$isGroomerAdmin = isGroomerAdmin($user);
+$pendingSql = "SELECT COUNT(*) FROM appointments WHERE status='pending'" . ($isSuperAdmin ? '' : (' AND clinic_id IN (SELECT id FROM clinics WHERE admin_id=?' . ($isGroomerAdmin ? " AND clinic_type='grooming'" : '') . ')')) . ($isGroomerAdmin ? " AND appointment_type='grooming'" : '');
+$pendingStmt = $db->prepare($pendingSql);
+$pendingStmt->execute($isSuperAdmin ? [] : [$user['id']]);
+$pendingAppts = (int)$pendingStmt->fetchColumn();
+$pendingApplications = $isSuperAdmin ? (int)$db->query("SELECT COUNT(*) FROM clinic_applications WHERE status='pending'")->fetchColumn() : 0;
+$clinicNames = clinicNamesForUser($user);
 $nc           = unreadNotificationCount($user['id']);
 
 // Detect active page
@@ -43,7 +50,8 @@ function _adminLink(string $href, string $icon, string $label, int $badge = 0, s
       </div>
       <div>
         <div class="sidebar-user-name"><?= sanitize($user['first_name'] . ' ' . $user['last_name']) ?></div>
-        <div class="sidebar-user-role">Clinic Admin</div>
+        <div class="sidebar-user-role"><?= sanitize(displayRoleName($user['role_name'], $user['clinic_type'] ?? null)) ?></div>
+        <?php if ($clinicNames): ?><div style="font-size:.72rem;color:var(--text-muted);max-width:165px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="<?= sanitize(implode(', ', $clinicNames)) ?>"><?= sanitize(implode(', ', $clinicNames)) ?></div><?php endif; ?>
       </div>
     </div>
     <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse sidebar">
@@ -53,29 +61,30 @@ function _adminLink(string $href, string $icon, string $label, int $badge = 0, s
 
   <nav class="sidebar-nav">
     <div class="sidebar-section">Main</div>
-    <?= _adminLink('index.php',        'fa-tachometer-alt', 'Dashboard',      0,              $curPage) ?>
-    <?= _adminLink('appointments.php', 'fa-calendar-alt',   'Appointments',   $pendingAppts,  $curPage) ?>
+    <?= _adminLink($isSuperAdmin ? 'superadmin-dashboard.php' : 'index.php', 'fa-tachometer-alt', 'Dashboard', 0, $curPage) ?>
+    <?php if (!$isSuperAdmin): ?>
+    <?= _adminLink('appointments.php', 'fa-calendar-alt',   $isGroomerAdmin ? 'Grooming Appointments' : 'Appointments',   $pendingAppts,  $curPage) ?>
+    <?php if (!$isGroomerAdmin): ?>
     <?= _adminLink('records.php',      'fa-file-medical',   'Medical Records',0,              $curPage) ?>
+    <?php endif; ?>
+    <?php endif; ?>
 
     <div class="sidebar-section">Management</div>
     <?php if (($user['role_name'] ?? '') === 'superadmin'): ?>
     <?= _adminLink('users.php',    'fa-users',     'Users',         0, $curPage) ?>
+    <?= _adminLink('clinic-applications.php', 'fa-file-circle-check', 'Clinic Applications', $pendingApplications, $curPage) ?>
     <?php endif; ?>
-    <?= _adminLink('clinics.php',  'fa-hospital',  'Clinics',       0, $curPage) ?>
+    <?= _adminLink('clinics.php',  'fa-hospital',  $isSuperAdmin ? 'Clinics' : ($isGroomerAdmin ? 'Manage Grooming Center' : 'Manage Vet Clinic'), 0, $curPage) ?>
+    <?php if (!$isSuperAdmin): ?>
+    <?= _adminLink('profile.php', 'fa-id-badge', 'My Profile', 0, $curPage) ?>
+    <?php endif; ?>
+    <?php if (!$isGroomerAdmin): ?>
     <?= _adminLink('vets.php',     'fa-user-md',   'Veterinarians', 0, $curPage) ?>
+    <?php endif; ?>
     <?= _adminLink('groomers.php', 'fa-cut',       'Groomers',      0, $curPage) ?>
-    <?= _adminLink('services.php', 'fa-list',      'Services',      0, $curPage) ?>
-    <?php
-    // Unread messages count for badge
-    try {
-        $unreadMsgs = (int)getDB()->query("SELECT COUNT(*) FROM contact_messages WHERE status='unread'")->fetchColumn();
-    } catch (\Exception $e) { $unreadMsgs = 0; }
-    ?>
-    <?= _adminLink('messages.php', 'fa-envelope',  'Messages', $unreadMsgs, $curPage) ?>
-
-    <div class="sidebar-section">Reports</div>
-    <?= _adminLink('reports.php', 'fa-chart-bar', 'Reports', 0, $curPage) ?>
-    <?= _adminLink('ratings.php', 'fa-star',      'Ratings', 0, $curPage) ?>
+    <?php if (($user['role_name'] ?? '') !== 'superadmin'): ?>
+    <?= _adminLink('services.php', 'fa-list',      $isGroomerAdmin ? 'Grooming Services' : 'Services',      0, $curPage) ?>
+    <?php endif; ?>
 
   </nav>
 

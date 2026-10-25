@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_login'])) {
         $error = 'Please enter your email and password.';
     } else {
         $db   = getDB();
+        ensureTwoFactorSetting($db);
         $stmt = $db->prepare(
             'SELECT u.*, r.name AS role_name
              FROM users u JOIN roles r ON u.role_id=r.id
@@ -45,10 +46,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_login'])) {
                 } else {
                     $role = $loginUser['role_name'];
 
+                    if (in_array($role, ['veterinarian', 'groomer'], true)) {
+                        $activeClinic = $role === 'veterinarian'
+                            ? $db->prepare('SELECT 1 FROM veterinarians v JOIN clinics c ON c.id=v.clinic_id WHERE v.user_id=? AND c.is_active=1 LIMIT 1')
+                            : $db->prepare('SELECT 1 FROM groomers g JOIN clinics c ON c.id=g.clinic_id WHERE g.user_id=? AND c.is_active=1 LIMIT 1');
+                        $activeClinic->execute([$loginUser['id']]);
+                        if (!$activeClinic->fetchColumn()) {
+                            $error = 'Your clinic account is unavailable. Contact your Vet Admin.';
+                        }
+                    }
+
+                    if (empty($error)) {
+
+                    // Email-based two-factor authentication is optional for every account.
+                    if (!empty($loginUser['two_factor_enabled'])) {
+                        // Generate 6-digit OTP
+                        $otp = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                        $otpHash = password_hash($otp, PASSWORD_BCRYPT);
+                        $otpExpires = (new DateTime())->modify('+10 minutes')->format('Y-m-d H:i:s');
+                        
+                        // Store OTP in database
+                        $db->prepare('UPDATE users SET otp_code=?, otp_expires_at=?, otp_attempts=0 WHERE id=?')
+                           ->execute([$otpHash, $otpExpires, $loginUser['id']]);
+                        
+                        // Send OTP email
+                        require_once __DIR__ . '/../includes/mailer.php';
+                        $htmlBody = otpEmailHtml($loginUser['first_name'], $otp, 'login');
+                        $mailResult = sendMail(
+                            $loginUser['email'],
+                            $loginUser['first_name'] . ' ' . $loginUser['last_name'],
+                            'Your PetCare+ Login OTP Code',
+                            $htmlBody
+                        );
+                        
+                        // Store user info in session for OTP verification
+                        $_SESSION['otp_user_id'] = $loginUser['id'];
+                        $_SESSION['otp_email'] = $loginUser['email'];
+                        $_SESSION['otp_purpose'] = 'login';
+                        
+                        // Redirect to OTP verification page
+                        header('Location: verify-otp.php');
+                        exit;
+                    }
+
+                    // New clinic and staff accounts must replace their one-time password before using the dashboard.
+                    if ((int)($loginUser['must_change_password'] ?? 0) === 1) {
+                        session_regenerate_id(true);
+                        $_SESSION['user_id'] = $loginUser['id'];
+                        $db->prepare('UPDATE users SET last_login=NOW() WHERE id=?')->execute([$loginUser['id']]);
+                        header('Location: ' . APP_URL . '/auth/change-password.php');
+                        exit;
+                    }
+
+                    // For non-pet-owners, proceed directly
                     session_regenerate_id(true);
                     $_SESSION['user_id'] = $loginUser['id'];
                     $db->prepare('UPDATE users SET last_login=NOW(), inactivity_warned_at=NULL, inactivity_deactivated_at=NULL WHERE id=?')->execute([$loginUser['id']]);
                     redirectByRole(); exit;
+                    }
                 }
             } else {
                 // ── Wrong password — increment attempt counter ─────
@@ -207,10 +262,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_login'])) {
           <div class="form-group">
             <label class="form-label">Password <span class="required">*</span></label>
             <div class="input-group">
-              <input type="password" name="password" class="form-control"
+              <input type="password" name="password" id="loginPassword" class="form-control"
                 placeholder="••••••••"
                 required autocomplete="current-password">
-              <button type="button" class="toggle-pw"><i class="fas fa-eye-slash"></i></button>
+              <button type="button" class="toggle-pw" id="togglePassword">
+                <i class="fas fa-eye-slash"></i>
+              </button>
             </div>
             <div class="auth-link-right">
               <a href="forgot-password.php" class="auth-forgot-link">
@@ -246,10 +303,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_login'])) {
 
 <script>
 // Password toggle
-document.querySelector('.toggle-pw')?.addEventListener('click', function () {
-  var inp = this.closest('.input-group').querySelector('input');
-  var isHidden = inp.type === 'password';
-  inp.type = isHidden ? 'text' : 'password';
-  this.querySelector('i').className = isHidden ? 'fas fa-eye' : 'fas fa-eye-slash';
+document.addEventListener('DOMContentLoaded', function() {
+  const toggleBtn = document.getElementById('togglePassword');
+  const passwordInput = document.getElementById('loginPassword');
+  
+  if (toggleBtn && passwordInput) {
+    toggleBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const isPassword = passwordInput.type === 'password';
+      passwordInput.type = isPassword ? 'text' : 'password';
+      
+      const icon = this.querySelector('i');
+      if (icon) {
+        icon.className = isPassword ? 'fas fa-eye' : 'fas fa-eye-slash';
+      }
+    });
+  }
 });
 </script>

@@ -5,6 +5,7 @@ requireLogin();
 $db     = getDB();
 $method = $_SERVER['REQUEST_METHOD'];
 $user   = currentUser();
+$isGroomerAdmin = isGroomerAdmin($user);
 $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']);
 if ($method !== 'POST') {
     if ($isAjax) jsonResponse(['error' => 'Method not allowed.'], 405);
@@ -35,7 +36,7 @@ if (!$apptId) {
 }
 
 // Fetch appointment
-$stmt = $db->prepare('SELECT a.*,c.admin_id,v.user_id AS vet_user_id,g.user_id AS groomer_user_id FROM appointments a JOIN clinics c ON a.clinic_id=c.id LEFT JOIN veterinarians v ON a.vet_id=v.id LEFT JOIN groomers g ON a.groomer_id=g.id WHERE a.id=?');
+$stmt = $db->prepare('SELECT a.*,c.admin_id,c.clinic_type,v.user_id AS vet_user_id,g.user_id AS groomer_user_id FROM appointments a JOIN clinics c ON a.clinic_id=c.id LEFT JOIN veterinarians v ON a.vet_id=v.id LEFT JOIN groomers g ON a.groomer_id=g.id WHERE a.id=?');
 $stmt->execute([$apptId]); $appt = $stmt->fetch();
 
 if (!$appt) {
@@ -43,25 +44,41 @@ if (!$appt) {
     header('Location: ' . APP_URL . '/dashboard/owner/appointments.php'); exit;
 }
 
-// Permission check
-$canManage = $user['role_name']==='superadmin'
-    || ($user['role_name']==='admin' && $appt['admin_id']==$user['id'])
-    || ($user['role_name']==='veterinarian' && $appt['vet_user_id']==$user['id'])
-    || ($user['role_name']==='groomer'       && $appt['groomer_user_id']==$user['id'])
-    || ($user['role_name']==='pet_owner'     && $appt['owner_id']==$user['id'] && in_array($action,['cancel']));
+// Permission check keeps each clinic admin within their service area.
+if ($user['role_name'] === 'superadmin') {
+    $canManage = true;
+} elseif ($user['role_name'] === 'admin' && (int)$appt['admin_id'] === (int)$user['id']) {
+    if ($isGroomerAdmin) {
+        $canManage = $appt['clinic_type'] === 'grooming' && $appt['appointment_type'] === 'grooming';
+    } else {
+        $canManage = $appt['clinic_type'] === 'veterinary' && $appt['appointment_type'] === 'veterinary';
+    }
+} elseif ($user['role_name'] === 'veterinarian' && (int)$appt['vet_user_id'] === (int)$user['id']) {
+    $canManage = true;
+} elseif ($user['role_name'] === 'groomer' && (int)$appt['groomer_user_id'] === (int)$user['id']) {
+    $canManage = true;
+} elseif ($user['role_name'] === 'pet_owner' && (int)$appt['owner_id'] === (int)$user['id'] && $action === 'cancel') {
+    $canManage = true;
+} else {
+    $canManage = false;
+}
 
 if (!$canManage) {
     if ($isAjax) jsonResponse(['error'=>'Unauthorized.'],403);
     header('Location: ' . APP_URL . '/unauthorized.php'); exit;
 }
 
-$newStatus = match($action) {
-    'approve'  => 'approved',
-    'reject'   => 'rejected',
-    'complete' => 'completed',
-    'cancel'   => 'cancelled',
-    default    => null
-};
+if ($action === 'approve') {
+    $newStatus = 'approved';
+} elseif ($action === 'reject') {
+    $newStatus = 'rejected';
+} elseif ($action === 'complete') {
+    $newStatus = 'completed';
+} elseif ($action === 'cancel') {
+    $newStatus = 'cancelled';
+} else {
+    $newStatus = null;
+}
 
 if (!$newStatus) {
     if ($isAjax) jsonResponse(['error'=>'Invalid action.'],400);
@@ -78,13 +95,18 @@ if ($newStatus === 'cancelled' && $cancelReason) {
 }
 
 // Notifications
-$ownerMsg  = match($newStatus){
-    'approved'  => "Your appointment on ".date('M j, Y',strtotime($appt['appointment_date']))." has been approved!",
-    'rejected'  => "Your appointment has been rejected. Please try booking another time.",
-    'completed' => "Your appointment has been marked as completed. Please rate your experience!",
-    'cancelled' => "Your appointment has been cancelled." . ($cancelReason ? " Reason: $cancelReason" : ""),
-    default     => ""
-};
+if ($newStatus === 'approved') {
+    $ownerMsg = "Your appointment on " . date('M j, Y', strtotime($appt['appointment_date'])) . " has been approved!";
+} elseif ($newStatus === 'rejected') {
+    $ownerMsg = 'Your appointment has been rejected. Please try booking another time.';
+} elseif ($newStatus === 'completed') {
+    $ownerMsg = 'Your appointment has been marked as completed. Please rate your experience!';
+} elseif ($newStatus === 'cancelled') {
+    $ownerMsg = 'Your appointment has been cancelled.';
+    if ($cancelReason) $ownerMsg .= ' Reason: ' . $cancelReason;
+} else {
+    $ownerMsg = '';
+}
 if ($ownerMsg) createNotification($appt['owner_id'], 'Appointment '.ucfirst($newStatus), $ownerMsg, 'appointment', APP_URL.'/dashboard/owner/appointments.php');
 
 // Notify clinic admin when owner cancels, including reason

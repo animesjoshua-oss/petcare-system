@@ -39,6 +39,13 @@ function verifyPassword(string $plain, string $hash): bool {
     return password_verify($plain, $hash);
 }
 
+function ensureTwoFactorSetting(PDO $db): void {
+    $column = $db->query("SHOW COLUMNS FROM users LIKE 'two_factor_enabled'")->fetch(PDO::FETCH_ASSOC);
+    if (!$column) {
+        $db->exec('ALTER TABLE users ADD COLUMN two_factor_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER must_change_password');
+    }
+}
+
 function generateToken(int $bytes = 32): string {
     return bin2hex(random_bytes($bytes));
 }
@@ -49,7 +56,7 @@ function isLoggedIn(): bool {
     if (empty($_SESSION['user_id'])) return false;
     // Verify user still exists and is active
     try {
-        $stmt = getDB()->prepare('SELECT id FROM users WHERE id=? AND is_active=1');
+        $stmt = getDB()->prepare("SELECT u.id FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND u.is_active=1 AND (r.name NOT IN ('veterinarian','groomer') OR (r.name='veterinarian' AND EXISTS (SELECT 1 FROM veterinarians v JOIN clinics c ON c.id=v.clinic_id WHERE v.user_id=u.id AND c.is_active=1)) OR (r.name='groomer' AND EXISTS (SELECT 1 FROM groomers g JOIN clinics c ON c.id=g.clinic_id WHERE g.user_id=u.id AND c.is_active=1)))");
         $stmt->execute([$_SESSION['user_id']]);
         if (!$stmt->fetch()) {
             session_unset();
@@ -65,7 +72,9 @@ function currentUser(): ?array {
     if (!isLoggedIn()) return null;
     static $user = null;
     if ($user === null) {
-        $stmt = getDB()->prepare('SELECT u.*, r.name AS role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ?');
+        $stmt = getDB()->prepare('SELECT u.*, r.name AS role_name,
+            (SELECT c.clinic_type FROM clinics c WHERE c.admin_id=u.id ORDER BY c.is_active DESC,c.id LIMIT 1) AS clinic_type
+            FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ?');
         $stmt->execute([$_SESSION['user_id']]);
         $user = $stmt->fetch() ?: null;
     }
@@ -95,28 +104,80 @@ function redirectByRole(): void {
         header('Location: ' . APP_URL . '/auth/login.php');
         exit;
     }
-    switch ($user['role_name']) {
-        case 'pet_owner':    header('Location: ' . APP_URL . '/dashboard/owner/index.php');   break;
-        case 'veterinarian': header('Location: ' . APP_URL . '/dashboard/vet/index.php');     break;
-        case 'groomer':      header('Location: ' . APP_URL . '/dashboard/groomer/index.php'); break;
-        case 'admin':
-        case 'superadmin':   header('Location: ' . APP_URL . '/dashboard/admin/index.php');   break;
-        default:
-            session_unset();
-            header('Location: ' . APP_URL . '/auth/login.php');
+    if ($user['role_name'] === 'pet_owner') {
+        header('Location: ' . APP_URL . '/dashboard/owner/index.php');
+    } elseif ($user['role_name'] === 'veterinarian') {
+        header('Location: ' . APP_URL . '/dashboard/vet/index.php');
+    } elseif ($user['role_name'] === 'groomer') {
+        header('Location: ' . APP_URL . '/dashboard/groomer/index.php');
+    } elseif ($user['role_name'] === 'admin' || $user['role_name'] === 'superadmin') {
+        header('Location: ' . APP_URL . '/dashboard/admin/index.php');
+    } else {
+        session_unset();
+        header('Location: ' . APP_URL . '/auth/login.php');
     }
     exit;
 }
 
-function displayRoleName(string $roleName): string {
-    return match($roleName) {
-        'admin'        => 'Clinic Admin',
-        'superadmin'   => 'Superadmin',
-        'pet_owner'    => 'Pet Owner',
-        'veterinarian' => 'Veterinarian',
-        'groomer'      => 'Groomer',
-        default        => ucfirst(str_replace('_', ' ', $roleName))
-    };
+function displayRoleName(string $roleName, ?string $clinicType = null): string {
+    if ($roleName === 'admin') {
+        if ($clinicType === 'grooming') return 'Groomer Admin';
+        else return 'Vet Admin';
+    } elseif ($roleName === 'superadmin') {
+        return 'Superadmin';
+    } elseif ($roleName === 'pet_owner') {
+        return 'Pet Owner';
+    } elseif ($roleName === 'veterinarian') {
+        return 'Veterinarian';
+    } elseif ($roleName === 'groomer') {
+        return 'Groomer';
+    } else {
+        return ucfirst(str_replace('_', ' ', $roleName));
+    }
+}
+
+function isGroomerAdmin(?array $user = null): bool {
+    $user ??= currentUser() ?? [];
+    return ($user['role_name'] ?? '') === 'admin' && ($user['clinic_type'] ?? '') === 'grooming';
+}
+
+function serviceDiscountsForService(array $service, ?string $appointmentType = null): array {
+    $serviceType = (string)($service['service_type'] ?? '');
+    $discounts = [];
+
+    if (in_array($serviceType, ['veterinary', 'both'], true)
+        && ($appointmentType === null || $appointmentType === 'veterinary')) {
+        $details = trim((string)($service['veterinarian_discount_details'] ?? ''));
+        if ($details !== '') $discounts[] = ['label' => 'Veterinarian discount', 'details' => $details];
+    }
+
+    if (in_array($serviceType, ['grooming', 'both'], true)
+        && ($appointmentType === null || $appointmentType === 'grooming')) {
+        $details = trim((string)($service['groomer_discount_details'] ?? ''));
+        if ($details !== '') $discounts[] = ['label' => 'Groomer discount', 'details' => $details];
+    }
+
+    return $discounts;
+}
+
+/** Return the clinic names associated with a clinic administrator or provider account. */
+function clinicNamesForUser(array $user): array {
+    $db = getDB();
+    $role = $user['role_name'] ?? '';
+    $userId = (int)($user['id'] ?? 0);
+
+    if ($role === 'admin') {
+        $stmt = $db->prepare('SELECT name FROM clinics WHERE admin_id=?' . (($user['clinic_type'] ?? '') === 'grooming' ? " AND clinic_type='grooming'" : '') . ' ORDER BY name');
+    } elseif ($role === 'veterinarian') {
+        $stmt = $db->prepare('SELECT c.name FROM veterinarians v JOIN clinics c ON c.id=v.clinic_id WHERE v.user_id=? ORDER BY c.name');
+    } elseif ($role === 'groomer') {
+        $stmt = $db->prepare('SELECT c.name FROM groomers g JOIN clinics c ON c.id=g.clinic_id WHERE g.user_id=? ORDER BY c.name');
+    } else {
+        return [];
+    }
+
+    $stmt->execute([$userId]);
+    return array_values(array_unique(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN))));
 }
 
 // ---- File Upload ----
@@ -249,21 +310,41 @@ function callGroq(string $prompt, int $maxTokens = 700): array {
         'max_tokens'  => $maxTokens,
         'temperature' => 0.7,
     ]);
-    $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . GROQ_API_KEY,
-        ],
-        CURLOPT_POSTFIELDS     => $body,
-        CURLOPT_TIMEOUT        => 30,
-    ]);
-    $response = curl_exec($ch);
-    $curlError = curl_error($ch);
-    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    $endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . GROQ_API_KEY,
+    ];
+    if (function_exists('curl_init')) {
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+        $response = curl_exec($ch);
+        $curlError = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    } else {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => implode("\r\n", $headers),
+                'content' => $body,
+                'timeout' => 30,
+                'ignore_errors' => true,
+            ],
+            'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
+        ]);
+        $response = @file_get_contents($endpoint, false, $context);
+        $curlError = $response === false ? 'HTTP stream request failed.' : '';
+        $httpCode = 0;
+        foreach ($http_response_header ?? [] as $header) {
+            if (preg_match('/^HTTP\/\S+\s+(\d{3})/', $header, $match)) $httpCode = (int)$match[1];
+        }
+    }
 
     // Handle cURL errors
     if ($response === false || $curlError) {
@@ -337,21 +418,41 @@ function callVision(string $prompt, string $imageBase64, string $mimeType = 'ima
         'temperature' => 0.4,
     ]);
 
-    $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . GROQ_API_KEY,
-        ],
-        CURLOPT_POSTFIELDS => $body,
-        CURLOPT_TIMEOUT    => 60,
-    ]);
-    $response = curl_exec($ch);
-    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
+    $endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . GROQ_API_KEY,
+    ];
+    if (function_exists('curl_init')) {
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_TIMEOUT => 60,
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+    } else {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => implode("\r\n", $headers),
+                'content' => $body,
+                'timeout' => 60,
+                'ignore_errors' => true,
+            ],
+            'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
+        ]);
+        $response = @file_get_contents($endpoint, false, $context);
+        $curlError = $response === false ? 'HTTP stream request failed.' : '';
+        $httpCode = 0;
+        foreach ($http_response_header ?? [] as $header) {
+            if (preg_match('/^HTTP\/\S+\s+(\d{3})/', $header, $match)) $httpCode = (int)$match[1];
+        }
+    }
 
     // Log all details for debugging
     if ($response === false || $curlError) {
@@ -387,15 +488,33 @@ function timeAgo(string $datetime): string {
     return date('M j, Y', $time);
 }
 
+/**
+ * Render star rating display with support for half stars
+ * @param float $rating - Rating value (0.5 to 5.0 in 0.5 increments)
+ * @param bool $showNumber - Whether to show numeric rating
+ * @return string - HTML for star rating display
+ */
 function starRating(float $rating, bool $showNumber = true): string {
+    $rating = max(0, min(5, $rating)); // Clamp between 0 and 5
     $html = '<span class="stars">';
+    
     for ($i = 1; $i <= 5; $i++) {
-        if ($i <= $rating)              $html .= '<i class="fas fa-star"></i>';
-        elseif ($i - 0.5 <= $rating)   $html .= '<i class="fas fa-star-half-alt"></i>';
-        else                            $html .= '<i class="far fa-star"></i>';
+        if ($rating >= $i) {
+            // Full star
+            $html .= '<i class="fas fa-star"></i>';
+        } elseif ($rating >= $i - 0.5) {
+            // Half star
+            $html .= '<i class="fas fa-star-half-alt"></i>';
+        } else {
+            // Empty star
+            $html .= '<i class="far fa-star"></i>';
+        }
     }
+    
     $html .= '</span>';
-    if ($showNumber) $html .= ' <small>' . number_format($rating, 1) . '</small>';
+    if ($showNumber) {
+        $html .= ' <small>' . number_format($rating, 1) . '</small>';
+    }
     return $html;
 }
 

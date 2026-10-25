@@ -19,6 +19,7 @@ $pStmt->execute([$gId]);
 $pendingCount = (int)$pStmt->fetchColumn();
 
 $nc      = unreadNotificationCount($user['id']);
+$clinicNames = clinicNamesForUser($user);
 $curPage = basename($_SERVER['PHP_SELF']);
 ?>
 <aside class="sidebar">
@@ -30,6 +31,7 @@ $curPage = basename($_SERVER['PHP_SELF']);
       <div>
         <div class="sidebar-user-name"><?= sanitize($user['first_name'] . ' ' . $user['last_name']) ?></div>
         <div class="sidebar-user-role" style="color:var(--warning);">Groomer</div>
+        <?php if ($clinicNames): ?><div style="font-size:.72rem;color:var(--text-muted);max-width:165px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="<?= sanitize(implode(', ', $clinicNames)) ?>"><?= sanitize(implode(', ', $clinicNames)) ?></div><?php endif; ?>
       </div>
     </div>
     <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Collapse sidebar">

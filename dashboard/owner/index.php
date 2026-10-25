@@ -31,9 +31,6 @@ $stmtAppts->execute([$user['id']]); $upcomingAppts = $stmtAppts->fetchAll();
 $myPets = $db->prepare("SELECT * FROM pets WHERE owner_id=? AND is_active=1 ORDER BY name LIMIT 6");
 $myPets->execute([$user['id']]); $myPets = $myPets->fetchAll();
 
-// Recent AI summaries
-$aiStmt = $db->prepare("SELECT ai.*, p.name AS pet_name FROM ai_summaries ai JOIN pets p ON ai.pet_id=p.id WHERE p.owner_id=? ORDER BY ai.created_at DESC LIMIT 3");
-$aiStmt->execute([$user['id']]); $recentAI = $aiStmt->fetchAll();
 ?>
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 <?php include __DIR__ . '/../../includes/sidebar_owner.php'; ?>
@@ -132,16 +129,6 @@ $aiStmt->execute([$user['id']]); $recentAI = $aiStmt->fetchAll();
       </div>
       <?php endif; ?>
 
-      <!-- AI Summary -->
-      <?php if ($recentAI): ?>
-      <div class="card"><div class="card-body">
-        <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem;"><i class="fas fa-robot" style="color:var(--primary)"></i> Latest AI Summary</h3>
-        <?php $ai = $recentAI[0]; ?>
-        <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.4rem;"><?= sanitize($ai['pet_name']) ?> · <?= timeAgo($ai['created_at']) ?></div>
-        <p style="font-size:.875rem;line-height:1.7;color:var(--text)"><?= sanitize(substr($ai['summary'],0,200)) ?><?= strlen($ai['summary'])>200?'…':'' ?></p>
-        <a href="<?= APP_URL ?>/dashboard/owner/ai.php" class="btn btn-sm btn-outline mt-2">View All Insights</a>
-      </div></div>
-      <?php endif; ?>
     </div>
   </div>
 

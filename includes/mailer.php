@@ -69,8 +69,16 @@ function verifyOtp(string $input): bool
 /**
  * Build styled OTP email HTML.
  */
-function otpEmailHtml(string $firstName, string $otp): string
+function otpEmailHtml(string $firstName, string $otp, string $purpose = 'login'): string
 {
+    $title = $purpose === 'login' ? 'Login Verification' : 'Email Verification';
+    $message = $purpose === 'login' 
+        ? "You're signing in to your <strong>PetCare+ account</strong>.<br>Use the OTP below to complete your login. It expires in <strong>10 minutes</strong>."
+        : "Thank you for registering at <strong>PetCare+ Clinic Hub</strong>.<br>Use the OTP below to verify your email address. It expires in <strong>10 minutes</strong>.";
+    $footer = $purpose === 'login'
+        ? "If you did not attempt to log in, please secure your account immediately."
+        : "If you did not register, ignore this email.";
+    
     return <<<HTML
 <!DOCTYPE html>
 <html>
@@ -85,7 +93,7 @@ function otpEmailHtml(string $firstName, string $otp): string
           <td style="background:linear-gradient(135deg,#1E40FF,#00D4AA);padding:36px;text-align:center;">
             <div style="font-size:2rem;">🐾</div>
             <h1 style="color:#fff;font-size:1.4rem;margin:12px 0 4px;">PetCare+ Clinic Hub</h1>
-            <p style="color:rgba(255,255,255,.85);font-size:.88rem;margin:0;">Email Verification</p>
+            <p style="color:rgba(255,255,255,.85);font-size:.88rem;margin:0;">{$title}</p>
           </td>
         </tr>
         <!-- Body -->
@@ -93,8 +101,7 @@ function otpEmailHtml(string $firstName, string $otp): string
           <td style="padding:36px;">
             <p style="font-size:1rem;color:#1E293B;margin-bottom:.5rem;">Hi <strong>{$firstName}</strong> 👋</p>
             <p style="font-size:.9rem;color:#64748B;line-height:1.7;margin-bottom:1.5rem;">
-              Thank you for registering at <strong>PetCare+ Clinic Hub</strong>.<br>
-              Use the OTP below to verify your email address. It expires in <strong>10 minutes</strong>.
+              {$message}
             </p>
             <!-- OTP Box -->
             <div style="text-align:center;margin:24px 0;">
@@ -107,7 +114,7 @@ function otpEmailHtml(string $firstName, string $otp): string
             </div>
             <p style="font-size:.82rem;color:#94A3B8;text-align:center;margin-top:1rem;">
               ⏱ This OTP expires in 10 minutes.<br>
-              If you did not register, ignore this email.
+              {$footer}
             </p>
           </td>
         </tr>
@@ -198,4 +205,63 @@ function accountStatusEmailHtml(string $firstName, string $status, string $reaso
 </body>
 </html>
 HTML;
+}
+
+/** Clinic registration decision email. Approved applicants receive a one-time password. */
+function clinicApplicationStatusEmailHtml(
+    string $firstName,
+    string $status,
+    string $clinicName,
+    string $applicationCode,
+    string $reason = '',
+    string $email = '',
+    string $temporaryPassword = '',
+    string $adminLabel = 'Vet Admin'
+): string {
+    $safeName = htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8');
+    $safeClinic = htmlspecialchars($clinicName, ENT_QUOTES, 'UTF-8');
+    $safeCode = htmlspecialchars($applicationCode, ENT_QUOTES, 'UTF-8');
+    $safeAdminLabel = htmlspecialchars($adminLabel, ENT_QUOTES, 'UTF-8');
+    $loginUrl = htmlspecialchars(APP_URL . '/auth/login.php', ENT_QUOTES, 'UTF-8');
+    if ($status === 'approved') {
+        $safeEmail = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+        $safePassword = htmlspecialchars($temporaryPassword, ENT_QUOTES, 'UTF-8');
+        $heading = 'Your clinic application was approved';
+        $color = '#15803D';
+        $body = "<p>Your application for <strong>{$safeClinic}</strong> was approved. Your {$safeAdminLabel} account is ready.</p>
+            <p><strong>Login email:</strong> {$safeEmail}<br><strong>One-time password:</strong> {$safePassword}</p>
+            <p>After signing in, PetCare+ will ask you to replace this password before opening your dashboard.</p>
+            <p>Application reference: {$safeCode}</p>
+            <p><a href=\"{$loginUrl}\" style=\"display:inline-block;background:{$color};color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700\">Sign in as {$safeAdminLabel}</a></p>";
+    } else {
+        $safeReason = htmlspecialchars($reason ?: 'The submitted application information could not be verified.', ENT_QUOTES, 'UTF-8');
+        $heading = 'Your clinic application was declined';
+        $color = '#B91C1C';
+        $body = "<p>We could not approve the application for <strong>{$safeClinic}</strong>.</p>
+            <p><strong>Review note:</strong> {$safeReason}</p>
+            <p>You may submit a new application with updated information. Reference: {$safeCode}</p>";
+    }
+
+    return "<!doctype html><html><head><meta charset=\"UTF-8\"></head><body style=\"margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#1e293b\">
+      <div style=\"max-width:560px;margin:32px auto;background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden\">
+        <div style=\"padding:24px 28px;background:#0f766e;color:#fff\"><strong>PetCare+ Clinic Hub</strong></div>
+        <div style=\"padding:28px\"><p>Hello {$safeName},</p><h1 style=\"font-size:21px;color:{$color}\">{$heading}</h1>{$body}</div>
+        <div style=\"padding:16px 28px;background:#f8fafc;color:#64748b;font-size:12px\">PetCare+ Clinic Hub · Pangasinan, Philippines</div>
+      </div></body></html>";
+}
+
+/** Temporary account credentials for clinic-created veterinarian and groomer accounts. */
+function clinicStaffCredentialsEmailHtml(string $firstName, string $roleName, string $clinicName, string $email, string $temporaryPassword): string {
+    $values = array_map(static fn($value) => htmlspecialchars($value, ENT_QUOTES, 'UTF-8'), [$firstName, $roleName, $clinicName, $email, $temporaryPassword]);
+    [$safeName, $safeRole, $safeClinic, $safeEmail, $safePassword] = $values;
+    $loginUrl = htmlspecialchars(APP_URL . '/auth/login.php', ENT_QUOTES, 'UTF-8');
+    return "<!doctype html><html><head><meta charset=\"UTF-8\"></head><body style=\"margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#1e293b\">
+      <div style=\"max-width:560px;margin:32px auto;background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden\">
+        <div style=\"padding:24px 28px;background:#0f766e;color:#fff\"><strong>PetCare+ Clinic Hub</strong></div>
+        <div style=\"padding:28px\"><p>Hello {$safeName},</p><p>Your {$safeRole} account for <strong>{$safeClinic}</strong> is ready.</p>
+          <p><strong>Login email:</strong> {$safeEmail}<br><strong>One-time password:</strong> {$safePassword}</p>
+          <p>After signing in, choose a new private password before continuing.</p>
+          <p><a href=\"{$loginUrl}\">Sign in to PetCare+</a></p></div>
+        <div style=\"padding:16px 28px;background:#f8fafc;color:#64748b;font-size:12px\">PetCare+ Clinic Hub · Pangasinan, Philippines</div>
+      </div></body></html>";
 }

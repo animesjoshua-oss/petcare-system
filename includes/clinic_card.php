@@ -23,6 +23,9 @@ function renderClinicCard($clinic, $showRemoveFav = false) {
     
     $avgRating = (float)($clinic['avg_rating'] ?? $clinic['average_rating'] ?? 0);
     $ratingCount = (int)($clinic['rcount'] ?? $clinic['total_ratings'] ?? 0);
+    $accessibilityBadge = !empty($clinic['accessibility_notes'])
+        ? '<span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(14,165,233,.1);color:#0369a1;border-radius:20px;padding:.25rem .5rem;font-size:.7rem;font-weight:700;margin-bottom:.5rem;"><i class="fas fa-wheelchair"></i> Accessibility info</span>'
+        : '';
     
     // Cover photo or placeholder
     $coverPhoto = '';
@@ -136,6 +139,7 @@ HTML;
   <div class="clinic-card-body">
   <div class="clinic-card-title" title="{$safeClinicName}">{$safeClinicName}</div>
     <div class="clinic-card-addr"><i class="fas fa-map-marker-alt"></i>{$city}</div>
+    {$accessibilityBadge}
     {$phone}
     {$tags}
     <div class="clinic-card-footer">

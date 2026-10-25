@@ -20,12 +20,15 @@ $msg = ''; $done = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) { $msg='Invalid request.'; }
     else {
-        $cRating = (int)($_POST['clinic_rating'] ?? 0);
-        $vRating = (int)($_POST['vet_rating'] ?? 0) ?: null;
-        $gRating = (int)($_POST['groomer_rating'] ?? 0) ?: null;
+        $cRating = (float)($_POST['clinic_rating'] ?? 0);
+        $vRating = (float)($_POST['vet_rating'] ?? 0) ?: null;
+        $gRating = (float)($_POST['groomer_rating'] ?? 0) ?: null;
         $comment = sanitize($_POST['comment'] ?? '');
 
-        if ($cRating < 1 || $cRating > 5) { $msg = 'Please select a clinic rating.'; }
+        // Validate rating is between 0.5 and 5.0 in 0.5 increments
+        if ($cRating < 0.5 || $cRating > 5 || fmod($cRating * 2, 1) != 0) { 
+            $msg = 'Please select a valid clinic rating.'; 
+        }
         else {
             $db->prepare('INSERT INTO ratings (appointment_id,owner_id,clinic_id,vet_id,groomer_id,clinic_rating,vet_rating,groomer_rating,comment) VALUES (?,?,?,?,?,?,?,?,?)')
                ->execute([$apptId,$user['id'],$appt['clinic_id'],$appt['vet_id'],$appt['groomer_id'],$cRating,$vRating,$gRating,$comment]);
@@ -107,22 +110,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 </main>
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
+<style>
+.star-btn { position: relative; }
+.star-btn i { pointer-events: none; }
+</style>
 <script>
 function initStars(container, inputId) {
   const stars = container.querySelectorAll('.star-btn');
   const input = document.getElementById(inputId);
-  stars.forEach((btn, idx) => {
-    btn.addEventListener('click', () => {
-      input.value = idx + 1;
-      stars.forEach((s, i) => { s.querySelector('i').style.color = i <= idx ? '#F59E0B' : '#D1D5DB'; });
+  
+  // Function to update star display
+  function updateStars(rating) {
+    stars.forEach((btn, idx) => {
+      const icon = btn.querySelector('i');
+      const starValue = idx + 1;
+      
+      if (rating >= starValue) {
+        // Full star
+        icon.className = 'fas fa-star';
+        icon.style.color = '#F59E0B';
+      } else if (rating >= starValue - 0.5) {
+        // Half star
+        icon.className = 'fas fa-star-half-alt';
+        icon.style.color = '#F59E0B';
+      } else {
+        // Empty star
+        icon.className = 'fas fa-star';
+        icon.style.color = '#D1D5DB';
+      }
     });
-    btn.addEventListener('mouseover', () => stars.forEach((s, i) => { s.querySelector('i').style.color = i <= idx ? '#F59E0B' : '#D1D5DB'; }));
-    btn.addEventListener('mouseout',  () => {
-      const val = parseInt(input.value || 0);
-      stars.forEach((s, i) => { s.querySelector('i').style.color = i < val ? '#F59E0B' : '#D1D5DB'; });
+  }
+  
+  stars.forEach((btn, idx) => {
+    btn.addEventListener('click', (e) => {
+      const rect = btn.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+      
+      // If clicked on left half, set half star; if right half, set full star
+      let rating;
+      if (clickX < width / 2) {
+        rating = idx + 0.5;
+      } else {
+        rating = idx + 1;
+      }
+      
+      input.value = rating;
+      updateStars(rating);
+    });
+    
+    btn.addEventListener('mousemove', (e) => {
+      const rect = btn.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const width = rect.width;
+      
+      let hoverRating;
+      if (mouseX < width / 2) {
+        hoverRating = idx + 0.5;
+      } else {
+        hoverRating = idx + 1;
+      }
+      
+      updateStars(hoverRating);
+    });
+    
+    btn.addEventListener('mouseout', () => {
+      const val = parseFloat(input.value || 0);
+      updateStars(val);
     });
   });
+  
+  container.addEventListener('mouseleave', () => {
+    const val = parseFloat(input.value || 0);
+    updateStars(val);
+  });
 }
+
 initStars(document.getElementById('clinicStars'), 'clinic_rating_val');
 <?php if ($appt['vet_id']): ?>initStars(document.getElementById('vetStars'), 'vet_rating_val');<?php endif; ?>
 <?php if ($appt['groomer_id']): ?>initStars(document.getElementById('groomerStars'), 'groomer_rating_val');<?php endif; ?>

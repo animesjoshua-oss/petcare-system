@@ -19,25 +19,9 @@ $footerIsDashboard = isset($isDashboard) && $isDashboard;
                         <i class="fas fa-paw"></i> PetCare<span>+</span>
                     </a>
                     <p>Centralizing veterinary clinics and grooming centers across Pangasinan, Philippines. Caring for your pets, one appointment at a time.</p>
-                    <div class="social-links">
-                        <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                        <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
-                    </div>
                 </div>
 
 
-                <!-- Contact -->
-                <div class="footer-contact">
-                    <h4>Contact Us</h4>
-                    <ul>
-                        <li><i class="fas fa-map-marker-alt"></i> Pangasinan, Philippines</li>
-                        <li><i class="fas fa-phone"></i> +63-900-000-0000</li>
-                        <li><i class="fas fa-envelope"></i>techytropa@gmail.com</li>
-                        <li><i class="fas fa-clock"></i> Mon–Sat: 8AM – 6PM</li>
-                    </ul>
-                </div>
             </div>
         </div>
     </div>
@@ -45,8 +29,9 @@ $footerIsDashboard = isset($isDashboard) && $isDashboard;
         <div class="container">
             <p>&copy; <?= date('Y') ?> <?= APP_NAME ?>. All rights reserved.</p>
             <div class="footer-legal">
-                <a href="<?= APP_URL ?>/privacy.php">Privacy Policy</a>
-                <a href="<?= APP_URL ?>/terms.php">Terms of Service</a>
+                <a href="<?= APP_URL ?>/pages/common-questions.php">Common Questions</a>
+                <a href="<?= APP_URL ?>/pages/privacy.php">Privacy Policy</a>
+                <a href="<?= APP_URL ?>/pages/terms.php">Terms of Service</a>
             </div>
         </div>
     </div>
@@ -92,6 +77,10 @@ $footerIsDashboard = isset($isDashboard) && $isDashboard;
     case 'groomer':
       $dashHome .= 'groomer/index.php';
       $apptLink .= 'groomer/appointments.php';
+      break;
+    case 'superadmin':
+      $dashHome .= 'admin/superadmin-dashboard.php';
+      $apptLink .= 'admin/clinic-applications.php';
       break;
     default:
       $dashHome .= 'admin/index.php';
@@ -145,7 +134,15 @@ $footerIsDashboard = isset($isDashboard) && $isDashboard;
     <i class="fas fa-calendar-alt"></i><span>Schedule</span>
   </a>
 
-  <?php else: // admin ?>
+  <?php elseif ($role === 'superadmin'): ?>
+  <a href="<?= APP_URL ?>/dashboard/admin/clinics.php" class="mbn-item<?= mbnActive(APP_URL.'/dashboard/admin/clinics.php', $curPath) ?>">
+    <i class="fas fa-hospital"></i><span>Clinics</span>
+  </a>
+  <a href="<?= APP_URL ?>/dashboard/admin/clinic-applications.php" class="mbn-item<?= mbnActive(APP_URL.'/dashboard/admin/clinic-applications.php', $curPath) ?>">
+    <i class="fas fa-file-circle-check"></i><span>Applications</span>
+  </a>
+
+  <?php else: // clinic admin ?>
   <a href="<?= $apptLink ?>" class="mbn-item<?= mbnActive($apptLink, $curPath) ?>">
     <i class="fas fa-calendar-alt"></i><span>Appts</span>
   </a>
@@ -166,7 +163,7 @@ $footerIsDashboard = isset($isDashboard) && $isDashboard;
 </nav>
 
 <!-- ── Floating AI Button ─────────────────────────── -->
-<?php if ($role !== 'groomer'): ?>
+<?php if (!in_array($role, ['groomer','superadmin'], true)): ?>
 <a href="<?= $aiPageUrl ?>" class="ai-fab" id="aiFab" title="AI Assistant" aria-label="Open AI Assistant">
   <i class="fas fa-robot"></i>
   <span class="ai-fab-label">AI</span>
@@ -238,30 +235,22 @@ $footerIsDashboard = isset($isDashboard) && $isDashboard;
   </div>
 
   <div class="pcai-input-row">
-    <button type="button" class="pcai-img-btn" id="pcaiImgBtn" title="Send a photo of your pet">
-      <i class="fas fa-image"></i>
-    </button>
-    <input type="file" id="pcaiImageInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;position:absolute;">
     <input type="text" class="pcai-input" id="pcaiInput" placeholder="Ask about groomers or pet care..." maxlength="300" autocomplete="off">
     <button class="pcai-send" id="pcaiSend" aria-label="Send">
       <i class="fas fa-paper-plane"></i>
     </button>
   </div>
 
-  <div class="pcai-img-preview-bar" id="pcaiImgPreviewBar" style="display:none;">
-    <img id="pcaiImgPreview" src="" alt="preview" class="pcai-img-preview-thumb">
-    <span class="pcai-img-preview-name" id="pcaiImgName"></span>
-    <button class="pcai-img-remove" id="pcaiImgRemove" title="Remove image"><i class="fas fa-times"></i></button>
-  </div>
   <div class="pcai-footer-label">Powered by <strong>PetCare Hub AI</strong></div>
 </div>
 
-<link rel="stylesheet" href="<?= APP_URL ?>/assets/css/pcai_widget.css">
+<link rel="stylesheet" href="<?= APP_URL ?>/assets/css/pcai_widget.css?v=<?= time() ?>">
 <script src="<?= APP_URL ?>/assets/js/pcai_widget.js?v=<?= time() ?>"></script>
 
 <?php endif; // end if ($user) ?>
 
-
+<!-- Main JavaScript -->
+<script src="<?= APP_URL ?>/assets/js/main.js?v=<?= time() ?>"></script>
 
 </body>
 </html>

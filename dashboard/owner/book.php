@@ -12,12 +12,38 @@ $preClinic = (int)($_GET['clinic'] ?? 0);
 $prePet = (int)($_GET['pet'] ?? 0);
 $preType = ($_GET['type'] ?? '') === 'grooming' ? 'grooming' : 'veterinary';
 
+/** Return the clinic's appointment window as minutes after midnight. */
+function clinicBookingWindow(?string $hoursJson, DateTimeImmutable $date): ?array {
+    if ($hoursJson === null || trim($hoursJson) === '') return null;
+    $hours = json_decode($hoursJson, true);
+    if (!is_array($hours) || !$hours) return null;
+
+    $dayName = strtolower($date->format('l'));
+    $day = $hours[$dayName] ?? $hours[substr($dayName, 0, 3)] ?? null;
+    if ($day === null || $day === 'closed' || !is_array($day) || !empty($day['closed'])) return null;
+
+    $openValue = trim((string)($day['open'] ?? ''));
+    $closeValue = trim((string)($day['close'] ?? ''));
+    if (strtolower($openValue) === '24 hours' && $closeValue === '') return [0, 1440];
+    if ($openValue === '' || $closeValue === '') return null;
+
+    $toMinutes = static function (string $value): ?int {
+        $timestamp = strtotime($value);
+        if ($timestamp === false) return null;
+        return ((int)date('G', $timestamp) * 60) + (int)date('i', $timestamp);
+    };
+    $openMinute = $toMinutes($openValue);
+    $closeMinute = $toMinutes($closeValue);
+    if ($openMinute === null || $closeMinute === null || $closeMinute <= $openMinute) return null;
+    return [$openMinute, $closeMinute];
+}
+
 // Load user pets
 $petsStmt = $db->prepare('SELECT id,name,species,breed,photo FROM pets WHERE owner_id=? AND is_active=1 ORDER BY name');
 $petsStmt->execute([$user['id']]); $myPets = $petsStmt->fetchAll();
 
 // Load clinics
-$clinics = $db->query('SELECT id,name,city FROM clinics WHERE is_active=1 ORDER BY name')->fetchAll();
+$clinics = $db->query('SELECT id,name,city,logo,cover_photo FROM clinics WHERE is_active=1 AND is_verified=1 ORDER BY name')->fetchAll();
 
 // Handle AJAX requests for clinic data
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'clinic_data') {
@@ -25,15 +51,18 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'clinic_data') {
     $ajaxClinic = (int)($_GET['cid'] ?? 0);
     $result = ['services' => [], 'vets' => [], 'groomers' => [], 'operating_hours' => null];
     if ($ajaxClinic) {
-        $svcStmt = $db->prepare('SELECT id,name,price,service_type FROM services WHERE clinic_id=? AND is_active=1 ORDER BY service_type,name');
+        $verifiedClinic = $db->prepare('SELECT id FROM clinics WHERE id=? AND is_active=1 AND is_verified=1');
+        $verifiedClinic->execute([$ajaxClinic]);
+        if (!$verifiedClinic->fetchColumn()) { echo json_encode($result); exit; }
+        $svcStmt = $db->prepare('SELECT id,name,price,service_type,veterinarian_discount_details,groomer_discount_details FROM services WHERE clinic_id=? AND is_active=1 ORDER BY service_type,name');
         $svcStmt->execute([$ajaxClinic]);
         $result['services'] = $svcStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $vetStmt = $db->prepare('SELECT v.id, CONCAT(u.first_name," ",u.last_name) AS full_name, v.specialization FROM veterinarians v JOIN users u ON v.user_id=u.id WHERE v.clinic_id=? AND v.is_available=1');
+        $vetStmt = $db->prepare('SELECT v.id, CONCAT(u.first_name," ",u.last_name) AS full_name, v.specialization FROM veterinarians v JOIN users u ON v.user_id=u.id WHERE v.clinic_id=? AND v.is_available=1 AND u.is_active=1');
         $vetStmt->execute([$ajaxClinic]);
         $result['vets'] = $vetStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $groomStmt = $db->prepare('SELECT g.id, CONCAT(u.first_name," ",u.last_name) AS full_name FROM groomers g JOIN users u ON g.user_id=u.id WHERE g.clinic_id=? AND g.is_available=1');
+        $groomStmt = $db->prepare('SELECT g.id, CONCAT(u.first_name," ",u.last_name) AS full_name FROM groomers g JOIN users u ON g.user_id=u.id WHERE g.clinic_id=? AND g.is_available=1 AND u.is_active=1');
         $groomStmt->execute([$ajaxClinic]);
         $result['groomers'] = $groomStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -57,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         header('Location: ' . APP_URL . '/pages/clinics.php');
         exit;
     }
-    $activeClinic = $db->prepare('SELECT id FROM clinics WHERE id=? AND is_active=1');
+    $activeClinic = $db->prepare('SELECT id FROM clinics WHERE id=? AND is_active=1 AND is_verified=1');
     $activeClinic->execute([$requestedClinic]);
     if (!$activeClinic->fetchColumn()) {
         header('Location: ' . APP_URL . '/pages/clinics.php');
@@ -66,14 +95,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // On clinic selection (initial page load): load services/vets/groomers
-$selClinic = (int)($_GET['cid'] ?? $preClinic);
+$selClinic = (int)($_GET['cid'] ?? ($_POST['clinic_id'] ?? $preClinic));
 $clinicServices = $clinicVets = $clinicGroomers = [];
 if ($selClinic) {
     $clinicServices = $db->prepare('SELECT * FROM services WHERE clinic_id=? AND is_active=1 ORDER BY service_type,name');
     $clinicServices->execute([$selClinic]); $clinicServices = $clinicServices->fetchAll();
-    $clinicVets = $db->prepare('SELECT v.*,CONCAT(u.first_name," ",u.last_name) AS full_name FROM veterinarians v JOIN users u ON v.user_id=u.id WHERE v.clinic_id=? AND v.is_available=1');
+    $clinicVets = $db->prepare('SELECT v.*,CONCAT(u.first_name," ",u.last_name) AS full_name FROM veterinarians v JOIN users u ON v.user_id=u.id WHERE v.clinic_id=? AND v.is_available=1 AND u.is_active=1');
     $clinicVets->execute([$selClinic]); $clinicVets = $clinicVets->fetchAll();
-    $clinicGroomers = $db->prepare('SELECT g.*,CONCAT(u.first_name," ",u.last_name) AS full_name FROM groomers g JOIN users u ON g.user_id=u.id WHERE g.clinic_id=? AND g.is_available=1');
+    $clinicGroomers = $db->prepare('SELECT g.*,CONCAT(u.first_name," ",u.last_name) AS full_name FROM groomers g JOIN users u ON g.user_id=u.id WHERE g.clinic_id=? AND g.is_available=1 AND u.is_active=1');
     $clinicGroomers->execute([$selClinic]); $clinicGroomers = $clinicGroomers->fetchAll();
 }
 
@@ -90,17 +119,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $apptDate = sanitize($_POST['appointment_date'] ?? '');
         $apptTime = sanitize($_POST['appointment_time'] ?? '');
         $reason   = sanitize($_POST['reason'] ?? '');
+        $appointmentDate = DateTimeImmutable::createFromFormat('!Y-m-d', $apptDate);
+        $timeValue = preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d(?::00)?$/', $apptTime) ? $apptTime : '';
 
         if (!$petId || !$clinicId || !$apptDate || !$apptTime) {
             $msg = 'Please fill in all required fields.'; $msgType = 'danger';
-        } elseif (strtotime($apptDate) < strtotime(date('Y-m-d'))) {
+        } elseif (!$appointmentDate || $appointmentDate->format('Y-m-d') !== $apptDate || !$timeValue) {
+            $msg = 'Choose a valid appointment date and time.'; $msgType = 'danger';
+        } elseif ($appointmentDate->format('Y-m-d') < date('Y-m-d')) {
             $msg = 'Appointment date must be today or later.'; $msgType = 'danger';
+        } elseif ($appointmentDate->format('Y-m-d') === date('Y-m-d') && strtotime($apptDate . ' ' . $timeValue) <= time()) {
+            $msg = 'Choose an appointment time that has not already passed.'; $msgType = 'danger';
+        } elseif (!in_array($apptType, ['veterinary', 'grooming'], true)) {
+            $msg = 'Choose a valid appointment type.'; $msgType = 'danger';
         } else {
             // Verify pet belongs to user
             $pc = $db->prepare('SELECT id FROM pets WHERE id=? AND owner_id=?');
             $pc->execute([$petId, $user['id']]);
             if (!$pc->fetch()) { $msg='Invalid pet selected.'; $msgType='danger'; }
             else {
+                $verifiedClinic = $db->prepare('SELECT id,admin_id,operating_hours FROM clinics WHERE id=? AND is_active=1 AND is_verified=1');
+                $verifiedClinic->execute([$clinicId]);
+                $clinicRow = $verifiedClinic->fetch(PDO::FETCH_ASSOC);
+                if (!$clinicRow) { $msg='Choose an approved clinic before booking.'; $msgType='danger'; }
+                else {
+                $window = clinicBookingWindow($clinicRow['operating_hours'] ?? null, $appointmentDate);
+                $hour = (int)substr($timeValue, 0, 2);
+                $minute = (int)substr($timeValue, 3, 2);
+                $requestedMinute = $hour * 60 + $minute;
+                if (!$window) {
+                    $schedule = json_decode((string)($clinicRow['operating_hours'] ?? ''), true);
+                    $msg = is_array($schedule) && $schedule
+                        ? 'The clinic is closed on that day. Choose another date.'
+                        : 'This clinic has not posted its opening hours yet. Contact the clinic before booking.';
+                    $msgType = 'danger';
+                } elseif ($requestedMinute < $window[0] || $requestedMinute >= $window[1] || (($requestedMinute - $window[0]) % 30) !== 0) {
+                    $msg = 'Choose a time within the clinic’s opening hours.'; $msgType = 'danger';
+                } else {
+                if ($apptType === 'veterinary') $groomId = null;
+                else $vetId = null;
+
+                $validSelection = true;
+                if ($svcId) {
+                    $serviceCheck = $db->prepare('SELECT id FROM services WHERE id=? AND clinic_id=? AND is_active=1 AND service_type IN (?,\'both\')');
+                    $serviceCheck->execute([$svcId, $clinicId, $apptType]);
+                    $validSelection = (bool)$serviceCheck->fetchColumn();
+                }
+                if ($validSelection && $vetId) {
+                    $vetCheck = $db->prepare('SELECT v.id FROM veterinarians v JOIN users u ON u.id=v.user_id WHERE v.id=? AND v.clinic_id=? AND v.is_available=1 AND u.is_active=1');
+                    $vetCheck->execute([$vetId, $clinicId]);
+                    $validSelection = (bool)$vetCheck->fetchColumn();
+                }
+                if ($validSelection && $groomId) {
+                    $groomerCheck = $db->prepare('SELECT g.id FROM groomers g JOIN users u ON u.id=g.user_id WHERE g.id=? AND g.clinic_id=? AND g.is_available=1 AND u.is_active=1');
+                    $groomerCheck->execute([$groomId, $clinicId]);
+                    $validSelection = (bool)$groomerCheck->fetchColumn();
+                }
+                if (!$validSelection) {
+                    $msg = 'The selected service or staff member is not available at this clinic.'; $msgType = 'danger';
+                } else {
                 // Handle symptom photo upload
                 $symptomPhotoPath = null;
                 if (!empty($_FILES['symptom_photo']['tmp_name']) && $_FILES['symptom_photo']['error'] === UPLOAD_ERR_OK) {
@@ -115,6 +192,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($adm) createNotification($adm['admin_id'], 'New Appointment Request', "A new appointment has been requested.", 'appointment', APP_URL.'/dashboard/admin/appointments.php');
                 $msg = 'Appointment booked successfully! Waiting for clinic confirmation.';
                 $msgType = 'success';
+                }
+                }
+                }
             }
         }
     }
@@ -123,6 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 <?php include __DIR__ . '/../../includes/sidebar_owner.php'; ?>
 <main class="dash-main">
+  <div class="booking-page">
   <div class="dash-header">
     <div class="dash-breadcrumb"><a href="index.php">Dashboard</a> <i class="fas fa-chevron-right" style="font-size:.65rem"></i> <span>Book Appointment</span></div>
     <h1>Book an Appointment</h1><p>Find a clinic, pick a service and time slot.</p>
@@ -164,7 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <?php else: ?>
 
   <div class="card">
-    <div class="card-body" style="max-width:680px;">
+    <div class="card-body">
       <form method="POST" id="bookForm" enctype="multipart/form-data">
         <?= csrfField() ?>
 
@@ -198,12 +279,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Step 2: Select Clinic -->
         <div style="margin-bottom:2rem;">
           <h3 class="booking-step-heading"><span class="booking-step-badge">2</span> Select Clinic</h3>
-          <select name="clinic_id" id="clinicSelect" class="form-control" required onchange="loadClinicData(this.value)" data-selected="<?= $selClinic ?>">
+          <select name="clinic_id" id="clinicSelect" class="form-control booking-clinic-select" onchange="loadClinicData(this.value)" data-selected="<?= $selClinic ?>" aria-hidden="true" tabindex="-1">
             <option value="">— Choose a clinic —</option>
             <?php foreach ($clinics as $c): ?>
             <option value="<?= $c['id'] ?>" <?= $selClinic==$c['id']?'selected':'' ?>><?= sanitize($c['name']) ?> (<?= sanitize($c['city']) ?>)</option>
             <?php endforeach; ?>
           </select>
+          <div class="booking-clinic-grid">
+            <?php foreach ($clinics as $c):
+              $cover = !empty($c['cover_photo']) ? (str_starts_with($c['cover_photo'], 'http') ? $c['cover_photo'] : APP_URL . '/' . ltrim($c['cover_photo'], '/')) : '';
+              $logo = !empty($c['logo']) ? (str_starts_with($c['logo'], 'http') ? $c['logo'] : APP_URL . '/' . ltrim($c['logo'], '/')) : '';
+            ?>
+              <button type="button" class="booking-clinic-option <?= $selClinic === (int)$c['id'] ? 'selected' : '' ?>" data-clinic-id="<?= (int)$c['id'] ?>" aria-pressed="<?= $selClinic === (int)$c['id'] ? 'true' : 'false' ?>">
+                <span class="booking-clinic-cover" <?= $cover ? 'style="background-image:url(\'' . sanitize($cover) . '\')"' : '' ?>></span>
+                <?php if ($logo): ?><img class="booking-clinic-logo" src="<?= sanitize($logo) ?>" alt="<?= sanitize($c['name']) ?> logo"><?php else: ?><span class="booking-clinic-logo booking-clinic-logo-placeholder"><i class="fas fa-hospital"></i></span><?php endif; ?>
+                <span class="booking-clinic-name"><?= sanitize($c['name']) ?></span>
+                <span class="booking-clinic-city"><i class="fas fa-location-dot"></i> <?= sanitize($c['city'] ?: 'Pangasinan') ?></span>
+                <span class="booking-clinic-check"><i class="fas fa-check"></i></span>
+              </button>
+            <?php endforeach; ?>
+          </div>
         </div>
 
         <!-- Step 3: Service & Provider -->
@@ -268,14 +363,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
               <label class="form-label">Preferred Time <span class="required">*</span></label>
               <select name="appointment_time" id="apptTime" class="form-control" required>
-                <option value="">— Select time —</option>
-                <?php
-                $start = strtotime('08:00'); $end = strtotime('17:00');
-                for ($t = $start; $t <= $end; $t += 1800):
-                    $ts = date('H:i:s', $t); $disp = date('g:i A', $t);
-                ?>
-                <option value="<?= $ts ?>"><?= $disp ?></option>
-                <?php endfor; ?>
+                <option value="">— Choose a date first —</option>
               </select>
             </div>
           </div>
@@ -331,6 +419,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
   <?php endif; ?>
+  </div>
 </main>
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
 
@@ -405,37 +494,103 @@ function renderOperatingHours(hours) {
   panel.style.display = 'block';
 }
 
-// ── Check if a selected date is a clinic day-off ──────────────────
-function checkDateAvailability(dateStr) {
-  const hint = document.getElementById('dateHint');
-  if (!hint || !dateStr || !Object.keys(clinicHours).length) {
-    if (hint) hint.style.display = 'none';
+// Clinic hours and appointment slot helpers.
+function parseClinicTime(value) {
+  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const meridiem = (match[3] || '').toUpperCase();
+  if (minute > 59 || hour > (meridiem ? 12 : 23) || (meridiem && hour < 1)) return null;
+  if (meridiem) hour = (hour % 12) + (meridiem === 'PM' ? 12 : 0);
+  return hour * 60 + minute;
+}
+
+function selectedClinicWindow(dateStr) {
+  if (!Object.keys(clinicHours).length) return null;
+  if (!dateStr) return null;
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const selectedDate = new Date(year, month - 1, day);
+  const dayKey = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][selectedDate.getDay()];
+  const info = clinicHours[dayKey] || clinicHours[dayKey.substring(0,3)] || null;
+  if (!info || info.closed || info === 'closed') return null;
+  const openValue = typeof info === 'string' ? info : info.open;
+  const closeValue = typeof info === 'object' ? info.close : '';
+  if (String(openValue || '').trim().toLowerCase() === '24 hours' && !closeValue) return [0, 1440];
+  const open = parseClinicTime(openValue);
+  const close = parseClinicTime(closeValue);
+  return open !== null && close !== null && close > open ? [open, close] : null;
+}
+
+function renderAppointmentTimes() {
+  const select = document.getElementById('apptTime');
+  const dateStr = document.getElementById('apptDate')?.value || '';
+  if (!select) return;
+  select.innerHTML = '';
+  const window = selectedClinicWindow(dateStr);
+  if (!dateStr) {
+    select.add(new Option('— Choose a date first —', ''));
+    return;
+  }
+  if (!window) {
+    const hasHours = Object.keys(clinicHours).length > 0;
+    select.add(new Option(hasHours ? '— Clinic closed on this day —' : '— Clinic hours not posted yet —', ''));
     return;
   }
 
-  const parts = dateStr.split('-').map(Number);
-  const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-  const dayKey   = dayNames[d.getDay()];
-  const info     = clinicHours[dayKey] || clinicHours[dayKey.substring(0,3)] || null;
-  const isClosed = !info || info.closed || info === 'closed';
-
-  if (isClosed) {
-    hint.className = 'form-error';
-    hint.innerHTML = '<i class="fas fa-exclamation-circle"></i> This clinic is <strong>closed</strong> on ' + dayNames[d.getDay()].charAt(0).toUpperCase() + dayNames[d.getDay()].slice(1) + 's. Please pick another date.';
-    hint.style.display = 'block';
-    document.getElementById('apptDate').classList.add('error');
-  } else {
-    const open = info.open || info;
-    const close = info.close || '';
-    hint.className = 'form-hint';
-    hint.innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Open ' + (close ? open + ' – ' + close : open);
-    hint.style.display = 'block';
-    document.getElementById('apptDate').classList.remove('error');
+  const dateParts = dateStr.split('-').map(Number);
+  const chosenDay = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+  const now = new Date();
+  const today = now.getFullYear() === chosenDay.getFullYear()
+    && now.getMonth() === chosenDay.getMonth()
+    && now.getDate() === chosenDay.getDate();
+  let added = 0;
+  for (let minute = window[0]; minute < window[1]; minute += 30) {
+    if (today && minute <= now.getHours() * 60 + now.getMinutes()) continue;
+    const hour = Math.floor(minute / 60);
+    const mins = minute % 60;
+    const value = `${String(hour).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
+    const label = new Date(2000, 0, 1, hour, mins).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    select.add(new Option(label, value));
+    added++;
   }
+  if (!added) select.add(new Option('— No appointment times available —', ''));
+  else select.add(new Option('— Select a time —', ''), 0);
 }
 
 // ── Load clinic data via AJAX ────────────────────────────────────
+function checkDateAvailability(dateStr) {
+  const hint = document.getElementById('dateHint');
+  if (!hint || !dateStr) {
+    if (hint) hint.style.display = 'none';
+    renderAppointmentTimes();
+    return;
+  }
+
+  const window = selectedClinicWindow(dateStr);
+  if (!window) {
+    hint.className = 'form-error';
+    if (Object.keys(clinicHours).length) {
+      const dateParts = dateStr.split('-').map(Number);
+      const chosenDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+      const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][chosenDate.getDay()];
+      hint.innerHTML = '<i class="fas fa-exclamation-circle"></i> This clinic is <strong>closed</strong> on ' + dayName + '. Please pick another date.';
+    } else {
+      hint.innerHTML = '<i class="fas fa-exclamation-circle"></i> This clinic has not posted its opening hours yet. Please contact the clinic before booking.';
+    }
+    hint.style.display = 'block';
+    document.getElementById('apptDate').classList.add('error');
+  } else {
+    const openLabel = new Date(2000, 0, 1, Math.floor(window[0] / 60), window[0] % 60).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const closeLabel = window[1] === 1440 ? '12:00 AM next day' : new Date(2000, 0, 1, Math.floor(window[1] / 60), window[1] % 60).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    hint.className = 'form-hint';
+    hint.innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Open ' + openLabel + ' – ' + closeLabel;
+    hint.style.display = 'block';
+    document.getElementById('apptDate').classList.remove('error');
+  }
+  renderAppointmentTimes();
+}
+
 function loadClinicData(cid) {
   const serviceSection = document.getElementById('serviceSection');
   const dateSection    = document.getElementById('dateSection');
@@ -450,6 +605,7 @@ function loadClinicData(cid) {
     dateSection.style.display    = 'none';
     clinicHours = {};
     renderOperatingHours({});
+    checkDateAvailability('');
     updateSteps();
     return;
   }
@@ -472,6 +628,7 @@ function loadClinicData(cid) {
       // Store and render operating hours
       clinicHours = data.operating_hours || {};
       renderOperatingHours(clinicHours);
+      checkDateAvailability(document.getElementById('apptDate').value);
 
       // Store all services; filtered rendering is handled by renderServices()
       allServices = data.services || [];
@@ -483,6 +640,7 @@ function loadClinicData(cid) {
           const spec = v.specialization ? ` (${v.specialization})` : '';
           vetSelect.innerHTML += `<option value="${v.id}">Dr. ${escHtml(v.full_name)}${spec}</option>`;
         });
+        vetSelect.value = String(data.vets[0].id);
       } else {
         vetSelect.innerHTML += '<option value="" disabled>No vets available</option>';
       }
@@ -493,6 +651,7 @@ function loadClinicData(cid) {
         data.groomers.forEach(g => {
           groomerSelect.innerHTML += `<option value="${g.id}">${escHtml(g.full_name)}</option>`;
         });
+        groomerSelect.value = String(data.groomers[0].id);
       } else {
         groomerSelect.innerHTML += '<option value="" disabled>No groomers available</option>';
       }
@@ -503,6 +662,8 @@ function loadClinicData(cid) {
       updateSteps();
     })
     .catch(() => {
+      clinicHours = {};
+      checkDateAvailability(document.getElementById('apptDate').value);
       if (spinner)    spinner.style.display    = 'none';
       if (dataFields) dataFields.style.display = 'block';
       svcSelect.innerHTML    = '<option value="">— Select service —</option>';
@@ -515,6 +676,8 @@ function toggleProvider() {
   const type = document.getElementById('apptType').value;
   document.getElementById('vetSection').style.display     = type === 'veterinary' ? '' : 'none';
   document.getElementById('groomerSection').style.display = type === 'grooming'   ? '' : 'none';
+  const providerSelect = document.getElementById(type === 'veterinary' ? 'vetSelect' : 'groomerSelect');
+  if (providerSelect && !providerSelect.value && providerSelect.options.length > 1 && !providerSelect.options[1].disabled) providerSelect.selectedIndex = 1;
   renderServices(); // re-filter services when type changes
 }
 
@@ -532,8 +695,12 @@ function renderServices() {
   svcSelect.innerHTML = '<option value="">— Select service —</option>';
   if (filtered.length) {
     filtered.forEach(s => {
-      const price = s.price ? ' – ₱' + Number(s.price).toLocaleString('en-PH', {maximumFractionDigits: 0}) : '';
-      svcSelect.innerHTML += `<option value="${s.id}">${escHtml(s.name)}${price}</option>`;
+      const discountLabel = type === 'veterinary' ? 'Veterinarian discount' : 'Groomer discount';
+      const basePrice = Number(s.price || 0);
+      const price = basePrice > 0 ? ` – ₱${basePrice.toLocaleString('en-PH', {maximumFractionDigits: 2})}` : '';
+      const details = String(type === 'veterinary' ? (s.veterinarian_discount_details || '') : (s.groomer_discount_details || '')).trim();
+      const discount = details ? ` – ${discountLabel}: ${escHtml(details)}` : '';
+      svcSelect.innerHTML += `<option value="${s.id}">${escHtml(s.name)}${price}${discount}</option>`;
     });
   } else {
     svcSelect.innerHTML += '<option value="" disabled>No services listed for this type</option>';
@@ -596,6 +763,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   document.querySelector('.pet-radio:checked')?.dispatchEvent(new Event('change'));
+
+  document.querySelectorAll('.booking-clinic-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const select = document.getElementById('clinicSelect');
+      select.value = option.dataset.clinicId;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      document.querySelectorAll('.booking-clinic-option').forEach(card => {
+        const selected = card === option;
+        card.classList.toggle('selected', selected);
+        card.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+    });
+  });
 
   // Date change — check operating hours
   const apptDate = document.getElementById('apptDate');

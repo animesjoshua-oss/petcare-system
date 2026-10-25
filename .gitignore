@@ -44,6 +44,9 @@ desktop.ini
 *.backup
 *.sql.gz
 
+# Local database export (contains user and pet records)
+/database/petcare_clinic_hub.sql
+
 # Node modules (if we ever add npm)
 node_modules/
 package-lock.json
@@ -62,3 +65,5 @@ phpunit.xml
 # Personal notes
 TODO.txt
 SCRATCH.txt
+.vercel
+.env*

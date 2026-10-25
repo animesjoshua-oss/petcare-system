@@ -4,36 +4,73 @@ requireLogin(); requireRole(['admin','superadmin']);
 $user = currentUser(); $pageTitle = 'Manage Groomers';
 $isDashboard = true; $db = getDB();
 $isSuperAdmin = $user['role_name'] === 'superadmin';
+$isGroomerAdmin = isGroomerAdmin($user);
 $msg = ''; $msgType = 'success';
+$temporaryPasswordReveal = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verifyCsrfToken($_POST['csrf_token'] ?? '')) {
     $msg = 'Invalid CSRF token.'; $msgType = 'danger';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_groomer']) && !$isSuperAdmin) {
+    $removeSql = 'DELETE u FROM users u JOIN groomers g ON g.user_id=u.id JOIN clinics c ON c.id=g.clinic_id WHERE g.id=? AND c.admin_id=?' . ($isGroomerAdmin ? " AND c.clinic_type='grooming'" : '') . ' AND u.role_id=3';
+    $remove = $db->prepare($removeSql);
+    $remove->execute([(int)$_POST['delete_groomer'], $user['id']]);
+    $msg = $remove->rowCount() ? 'Groomer account removed from your clinic.' : 'Groomer not found in your clinic.';
+    if (!$remove->rowCount()) $msgType = 'danger';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_groomer']) && !$isSuperAdmin) {
+    $toggleSql = 'UPDATE groomers g JOIN clinics c ON c.id=g.clinic_id SET g.is_available=? WHERE g.id=? AND c.admin_id=?' . ($isGroomerAdmin ? " AND c.clinic_type='grooming'" : '');
+    $toggle = $db->prepare($toggleSql);
+    $toggle->execute([(int)($_POST['is_available'] ?? 0) === 1 ? 1 : 0, (int)$_POST['toggle_groomer'], $user['id']]);
+    $msg = 'Groomer availability updated.';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $first    = sanitize($_POST['first_name']  ?? '');
-    $last     = sanitize($_POST['last_name']   ?? '');
+    $first    = trim($_POST['first_name']  ?? '');
+    $last     = trim($_POST['last_name']   ?? '');
     $email    = trim(strtolower($_POST['email'] ?? ''));
-    $clinicId = (int)($_POST['clinic_id']      ?? 0);
-    $spec     = sanitize($_POST['specialization'] ?? '');
+    $password = (string)($_POST['password'] ?? '');
+    $spec     = trim($_POST['specialization'] ?? '');
     $exp      = (int)($_POST['years_experience']  ?? 0);
 
-    if (!$first || !$last || !$email || !$clinicId) {
-        $msg = 'First name, last name, email and clinic are required.'; $msgType = 'danger';
+    if ($isSuperAdmin) {
+        $msg = 'Groomer accounts must be added by the clinic administrator.'; $msgType = 'danger';
+    } elseif (!$first || !$last || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 8) {
+        $msg = 'Enter first name, last name, a valid email, and a password of at least 8 characters.'; $msgType = 'danger';
     } else {
-        $clinicAccess = $db->prepare('SELECT id FROM clinics WHERE id=?' . ($isSuperAdmin ? '' : ' AND admin_id=?'));
-        $clinicAccess->execute($isSuperAdmin ? [$clinicId] : [$clinicId, $user['id']]);
-        $chk = $db->prepare('SELECT id FROM users WHERE email = ?');
+        $clinicAccess = $db->prepare('SELECT id,name FROM clinics WHERE admin_id=? AND is_active=1' . ($isGroomerAdmin ? " AND clinic_type='grooming'" : '') . ' ORDER BY id LIMIT 1');
+        $clinicAccess->execute([$user['id']]);
+        $clinic = $clinicAccess->fetch();
+        $clinicId = (int)($clinic['id'] ?? 0);
+        $chk = $db->prepare('SELECT u.id,r.name AS role_name,EXISTS(SELECT 1 FROM veterinarians v JOIN clinics c ON c.id=v.clinic_id WHERE v.user_id=u.id AND c.is_active=1) AS is_vet,EXISTS(SELECT 1 FROM groomers g JOIN clinics c ON c.id=g.clinic_id WHERE g.user_id=u.id AND c.is_active=1) AS is_groomer FROM users u JOIN roles r ON r.id=u.role_id WHERE LOWER(u.email)=?');
         $chk->execute([$email]);
-        if (!$clinicAccess->fetchColumn()) {
-            $msg = 'Choose a clinic assigned to your account.'; $msgType = 'danger';
-        } elseif ($chk->fetch()) {
-            $msg = 'That email is already registered.'; $msgType = 'danger';
+        $existing = $chk->fetch();
+        if (!$clinic) {
+            $msg = 'Your clinic is inactive or unavailable.'; $msgType = 'danger';
+        } elseif ($existing && $existing['role_name'] === 'pet_owner') {
+            $msg = 'Error: Email is registered as a pet owner, use other email.'; $msgType = 'danger';
+        } elseif ($existing && (($existing['is_vet'] || $existing['is_groomer']) || $existing['role_name'] !== 'groomer')) {
+            $msg = ($existing['is_vet'] || $existing['is_groomer']) ? 'This account is already connected to an active clinic and cannot be registered with another clinic.' : 'That email is already registered.'; $msgType = 'danger';
         } else {
-            $db->prepare('INSERT INTO users (role_id,first_name,last_name,email,password_hash,is_active,is_email_verified) VALUES (3,?,?,?,?,1,1)')
-               ->execute([$first, $last, $email, hashPassword('Groomer@1234')]);
-            $uid = $db->lastInsertId();
-            $db->prepare('INSERT INTO groomers (user_id,clinic_id,specialization,years_experience) VALUES (?,?,?,?)')
-               ->execute([$uid, $clinicId, $spec, $exp]);
-            $msg = "Groomer $first $last added successfully.";
+            $temporaryPassword = $password;
+            try {
+                $db->beginTransaction();
+                if ($existing) {
+                    $uid=(int)$existing['id'];
+                    $db->prepare('UPDATE users SET first_name=?,last_name=?,password_hash=?,is_active=1,must_change_password=0 WHERE id=?')->execute([$first,$last,hashPassword($temporaryPassword),$uid]);
+                    $oldGroomer=$db->prepare('SELECT id FROM groomers WHERE user_id=?'); $oldGroomer->execute([$uid]);
+                    if ($oldGroomer->fetchColumn()) $db->prepare('UPDATE groomers SET clinic_id=?,specialization=?,years_experience=? WHERE user_id=?')->execute([$clinicId,$spec?:null,max(0,min(50,$exp)),$uid]);
+                    else $db->prepare('INSERT INTO groomers (user_id,clinic_id,specialization,years_experience) VALUES (?,?,?,?)')->execute([$uid,$clinicId,$spec?:null,max(0,min(50,$exp))]);
+                } else {
+                    $db->prepare('INSERT INTO users (role_id,first_name,last_name,email,password_hash,is_active,is_email_verified,must_change_password) VALUES (3,?,?,?,?,1,1,0)')
+                       ->execute([$first, $last, $email, hashPassword($temporaryPassword)]);
+                    $uid = (int)$db->lastInsertId();
+                    $db->prepare('INSERT INTO groomers (user_id,clinic_id,specialization,years_experience) VALUES (?,?,?,?)')
+                       ->execute([$uid, $clinicId, $spec ?: null, max(0,min(50,$exp))]);
+                }
+                $db->commit();
+                $msg = "Groomer $first $last added to {$clinic['name']}.";
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                error_log('Groomer account creation failed: ' . $e->getMessage());
+                $msg = 'The groomer account could not be created.'; $msgType = 'danger';
+            }
         }
     }
 }
@@ -44,12 +81,12 @@ $groomerSql = "
     FROM groomers g
     JOIN users u ON g.user_id = u.id
     JOIN clinics c ON g.clinic_id = c.id
-" . ($isSuperAdmin ? '' : ' WHERE c.admin_id=?') . " ORDER BY u.last_name, u.first_name";
+" . ($isSuperAdmin ? '' : ' WHERE c.admin_id=?') . ($isGroomerAdmin ? " AND c.clinic_type='grooming'" : '') . " ORDER BY u.last_name, u.first_name";
 $groomerStmt = $db->prepare($groomerSql);
 $groomerStmt->execute($isSuperAdmin ? [] : [$user['id']]);
 $groomers = $groomerStmt->fetchAll();
 
-$clinicSql = 'SELECT id,name FROM clinics WHERE is_active=1' . ($isSuperAdmin ? '' : ' AND admin_id=?') . ' ORDER BY name';
+$clinicSql = 'SELECT id,name FROM clinics WHERE is_active=1' . ($isSuperAdmin ? '' : ' AND admin_id=?') . ($isGroomerAdmin ? " AND clinic_type='grooming'" : '') . ' ORDER BY name';
 $clinicStmt = $db->prepare($clinicSql);
 $clinicStmt->execute($isSuperAdmin ? [] : [$user['id']]);
 $clinics = $clinicStmt->fetchAll();
@@ -65,18 +102,19 @@ $clinics = $clinicStmt->fetchAll();
         <h1>Groomers</h1>
         <p><?= count($groomers) ?> groomer<?= count($groomers) !== 1 ? 's' : '' ?> registered</p>
       </div>
-      <button onclick="openModal('addGroomerModal')" class="btn btn-primary">
+      <?php if (!$isSuperAdmin): ?><button onclick="openModal('addGroomerModal')" class="btn btn-primary">
         <i class="fas fa-plus"></i> Add Groomer
-      </button>
+      </button><?php endif; ?>
     </div>
   </div>
 
   <?php if ($msg): ?>
   <div class="alert alert-<?= $msgType ?>" data-auto-dismiss="4000">
     <i class="fas fa-<?= $msgType === 'success' ? 'check-circle' : 'exclamation-circle' ?>"></i>
-    <?= $msg ?>
+    <?= sanitize($msg) ?>
   </div>
   <?php endif; ?>
+  <?php if ($temporaryPasswordReveal): ?><div class="alert alert-warning" role="status">One-time password: <code><?= sanitize($temporaryPasswordReveal) ?></code>. The groomer must change it at first sign-in.</div><?php endif; ?>
 
   <div class="card">
     <div class="table-wrap">
@@ -102,8 +140,9 @@ $clinics = $clinicStmt->fetchAll();
             <td><?= $g['years_experience'] ? $g['years_experience'].' yr'.($g['years_experience']>1?'s':'') : '—' ?></td>
             <td>
               <?= $g['is_available']
-                ? '<span class="badge badge-success">Available</span>'
-                : '<span class="badge badge-secondary">Unavailable</span>' ?>
+                ? '<span class="badge badge-success">Active</span>'
+                : '<span class="badge badge-secondary">Inactive</span>' ?>
+              <?php if (!$isSuperAdmin): ?><form method="POST" style="display:inline"><?= csrfField() ?><input type="hidden" name="toggle_groomer" value="<?= (int)$g['id'] ?>"><input type="hidden" name="is_available" value="<?= $g['is_available'] ? 0 : 1 ?>"><button class="btn btn-sm btn-outline" type="submit"><?= $g['is_available'] ? 'Set Inactive' : 'Set Active' ?></button></form> <form method="POST" style="display:inline" onsubmit="return confirm('Remove this groomer account from your clinic?')"><?= csrfField() ?><input type="hidden" name="delete_groomer" value="<?= (int)$g['id'] ?>"><button class="btn btn-sm btn-danger" type="submit">Remove</button></form><?php endif; ?>
             </td>
           </tr>
           <?php endforeach; ?>
@@ -114,9 +153,9 @@ $clinics = $clinicStmt->fetchAll();
         <i class="fas fa-cut"></i>
         <h3>No groomers yet</h3>
         <p>Add your first groomer to get started.</p>
-        <button onclick="openModal('addGroomerModal')" class="btn btn-primary mt-4">
+        <?php if (!$isSuperAdmin): ?><button onclick="openModal('addGroomerModal')" class="btn btn-primary mt-4">
           <i class="fas fa-plus"></i> Add Groomer
-        </button>
+        </button><?php endif; ?>
       </div>
       <?php endif; ?>
     </div>
@@ -124,7 +163,7 @@ $clinics = $clinicStmt->fetchAll();
 </main>
 
 <!-- ── Add Groomer Modal ─────────────────────────────────── -->
-<div class="modal-overlay" id="addGroomerModal">
+<?php if (!$isSuperAdmin): ?><div class="modal-overlay" id="addGroomerModal">
   <div class="modal">
     <div class="modal-header">
       <h3><i class="fas fa-cut" style="color:var(--primary);margin-right:.5rem;"></i>Add Groomer</h3>
@@ -147,15 +186,7 @@ $clinics = $clinicStmt->fetchAll();
           <label class="form-label">Email <span class="required">*</span></label>
           <input type="email" name="email" class="form-control" required placeholder="groomer@example.com">
         </div>
-        <div class="form-group">
-          <label class="form-label">Clinic <span class="required">*</span></label>
-          <select name="clinic_id" class="form-control" required>
-            <option value="">— Select Clinic —</option>
-            <?php foreach ($clinics as $c): ?>
-            <option value="<?= $c['id'] ?>"><?= sanitize($c['name']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
+        <div class="form-group"><label class="form-label">Password <span class="required">*</span></label><input type="password" name="password" class="form-control" minlength="8" autocomplete="new-password" required></div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Specialization</label>
@@ -166,9 +197,7 @@ $clinics = $clinicStmt->fetchAll();
             <input type="number" name="years_experience" class="form-control" min="0" max="50" value="0">
           </div>
         </div>
-        <p style="font-size:.8rem;color:var(--text-muted);margin-top:.25rem;">
-          Default password: <strong>Groomer@1234</strong>
-        </p>
+        <p style="font-size:.8rem;color:var(--text-muted);margin-top:.25rem;">This account will be assigned automatically to your active clinic.</p>
         <div class="modal-footer" style="padding:0;border:none;margin-top:1.25rem;display:flex;gap:.75rem;justify-content:flex-end;">
           <button type="button" onclick="closeModal('addGroomerModal')" class="btn btn-outline">Cancel</button>
           <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Add Groomer</button>
@@ -176,6 +205,6 @@ $clinics = $clinicStmt->fetchAll();
       </form>
     </div>
   </div>
-</div>
+</div><?php endif; ?>
 
 <?php include __DIR__ . '/../../includes/footer.php'; ?>

@@ -5509,6 +5509,13 @@ body {
 }
 .user-dropdown-panel.open { display: block; }
 
+/* The account menu uses a dark surface in both themes, so keep its toggle label legible. */
+.user-dropdown-panel .udp-darkmode-row,
+.user-dropdown-panel .udp-darkmode-row span,
+.user-dropdown-panel .udp-darkmode-row .udp-icon {
+  color: #F8FAFC;
+}
+
 @media (min-width: 769px) {
   .udp-header       { display: none; }
   .udp-backdrop     { display: none !important; }
@@ -7089,6 +7096,12 @@ tbody tr:hover > td:first-child {
 }
 
 /* ── Notification items ── */
+.notif-dp-item-wrapper {
+  position: relative;
+  overflow: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
 .notif-dp-item {
   display: flex;
   align-items: flex-start;
@@ -7096,13 +7109,42 @@ tbody tr:hover > td:first-child {
   padding: .8rem 1.1rem;
   border-bottom: 1px solid rgba(255,255,255,0.04);
   cursor: pointer;
-  transition: background .15s;
+  transition: background .15s, transform .3s ease;
   text-decoration: none;
+  position: relative;
+  background: var(--card-bg, #0f172a);
+  touch-action: pan-y;
 }
 .notif-dp-item:last-child { border-bottom: none; }
 .notif-dp-item:hover { background: rgba(255,255,255,0.04); }
 .notif-dp-item.unread { background: rgba(var(--primary-rgb, 108,99,255), 0.07); }
 .notif-dp-item.unread:hover { background: rgba(var(--primary-rgb, 108,99,255), 0.12); }
+
+.notif-dp-delete {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 55px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: background 0.2s;
+  z-index: 1;
+}
+
+.notif-dp-delete:hover {
+  background: #dc2626;
+}
+
+.notif-dp-delete:active {
+  background: #b91c1c;
+}
 
 .notif-dp-icon {
   width: 36px;
@@ -8359,8 +8401,13 @@ tbody tr:hover > td:first-child {
   cursor: pointer;
   font-size: 1rem;
   transition: color 0.2s ease;
-  padding: 0.3rem;
-  z-index: 2;
+  padding: 0.5rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
 }
 
 [data-theme="dark"] .auth-form .toggle-pw {
@@ -8369,6 +8416,14 @@ tbody tr:hover > td:first-child {
 
 .auth-form .toggle-pw:hover {
   color: var(--primary);
+}
+
+.auth-form .toggle-pw:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.auth-form .toggle-pw i {
+  pointer-events: none;
 }
 
 /* Auth Page - Input Icons */
@@ -9340,6 +9395,54 @@ p {
 }
 
 /* End of main.css */
+
+/* Light theme: keep labels readable on filled action buttons. */
+[data-theme="light"] a.btn-primary,
+[data-theme="light"] button.btn-primary,
+[data-theme="light"] .btn-primary,
+:root:not([data-theme="dark"]) a.btn-primary,
+:root:not([data-theme="dark"]) button.btn-primary,
+:root:not([data-theme="dark"]) .btn-primary,
+[data-theme="light"] a.btn-secondary,
+[data-theme="light"] button.btn-secondary,
+[data-theme="light"] .btn-secondary,
+:root:not([data-theme="dark"]) a.btn-secondary,
+:root:not([data-theme="dark"]) button.btn-secondary,
+:root:not([data-theme="dark"]) .btn-secondary,
+[data-theme="light"] a.btn-danger,
+[data-theme="light"] button.btn-danger,
+[data-theme="light"] .btn-danger,
+:root:not([data-theme="dark"]) a.btn-danger,
+:root:not([data-theme="dark"]) button.btn-danger,
+:root:not([data-theme="dark"]) .btn-danger,
+[data-theme="light"] a.btn-success,
+[data-theme="light"] button.btn-success,
+[data-theme="light"] .btn-success,
+:root:not([data-theme="dark"]) a.btn-success,
+:root:not([data-theme="dark"]) button.btn-success,
+:root:not([data-theme="dark"]) .btn-success,
+[data-theme="light"] a.btn-info,
+[data-theme="light"] button.btn-info,
+[data-theme="light"] .btn-info,
+:root:not([data-theme="dark"]) a.btn-info,
+:root:not([data-theme="dark"]) button.btn-info,
+:root:not([data-theme="dark"]) .btn-info {
+  color: #fff !important;
+}
+
+[data-theme="light"] a.btn-outline,
+[data-theme="light"] button.btn-outline,
+:root:not([data-theme="dark"]) a.btn-outline,
+:root:not([data-theme="dark"]) button.btn-outline {
+  color: #4F46E5;
+}
+
+@media (max-width: 768px) {
+  .pcai-widget {
+    height: min(70vh, 620px) !important;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + .75rem) !important;
+  }
+}
 
 /* Clinic directory filters: preserve comfortable inputs on tablet and mobile. */
 @media (max-width: 900px) {

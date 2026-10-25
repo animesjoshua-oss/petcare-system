@@ -161,14 +161,17 @@ $showForm = isset($_GET['action']) && $_GET['action']==='add' || $editPet;
           </div>
           <div class="form-group">
             <label class="form-label">Photo</label>
-            <div class="upload-area">
+            <div class="upload-area" id="petPhotoUpload">
               <?php $editPhotoUrl = assetUrl($editPet['photo'] ?? null); ?>
               <?php if ($editPet && $editPhotoUrl): ?>
-              <img src="<?= sanitize($editPhotoUrl) ?>" class="upload-preview" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:.5rem;" alt="">
+              <img src="<?= sanitize($editPhotoUrl) ?>" class="upload-preview" id="photoPreview" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:.5rem;" alt="">
               <?php else: ?>
-              <img class="upload-preview" style="display:none;width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:.5rem;" alt="">
+              <img class="upload-preview" id="photoPreview" style="display:none;width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:.5rem;" alt="">
               <?php endif; ?>
-              <input type="file" name="photo" accept="image/*" class="form-control">
+              <input type="file" name="photo" id="photoInput" accept="image/*" class="form-control">
+              <div id="photoFilename" style="font-size:.85rem;color:var(--text-muted);margin-top:.5rem;display:none;">
+                <i class="fas fa-image"></i> <span id="filenameText"></span>
+              </div>
             </div>
           </div>
         </div>
@@ -191,4 +194,29 @@ $showForm = isset($_GET['action']) && $_GET['action']==='add' || $editPet;
   <?= renderEmptyState('fa-dog', 'No pets added yet', 'Add your first pet to start booking appointments and tracking health.', 'Add My First Pet', '?action=add') ?>
   <?php endif; ?>
 </main>
+
+<script>
+// Pet photo preview and filename display
+document.getElementById('photoInput')?.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const preview = document.getElementById('photoPreview');
+  const filenameDiv = document.getElementById('photoFilename');
+  const filenameText = document.getElementById('filenameText');
+  
+  if (file) {
+    // Show filename
+    filenameText.textContent = file.name;
+    filenameDiv.style.display = 'block';
+    
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+</script>
+
 <?php include __DIR__ . '/../../includes/footer.php'; ?>

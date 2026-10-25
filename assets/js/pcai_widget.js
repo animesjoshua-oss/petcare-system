@@ -1,7 +1,7 @@
 /**
  * PetCare AI Widget
  * Floating chat widget for AI-powered pet care assistance
- * Supports text and image input
+ * Supports text input
  * Last updated: December 2024
  */
 
@@ -20,11 +20,6 @@
   const messages = document.getElementById('pcaiMessages');
   const chips = document.getElementById('pcaiChips');
   const badge = document.getElementById('pcaiBadge');
-  const imgInput = document.getElementById('pcaiImageInput');
-  const imgBar = document.getElementById('pcaiImgPreviewBar');
-  const imgThumb = document.getElementById('pcaiImgPreview');
-  const imgName = document.getElementById('pcaiImgName');
-  const imgRemove = document.getElementById('pcaiImgRemove');
   const csrf = widget ? widget.dataset.csrf || '' : '';
   const apiUrl = widget ? widget.dataset.apiUrl || '/api/chat.php' : '/api/chat.php';
 
@@ -36,7 +31,6 @@
   // ============================================================
   let unread = 0;
   let isOpen = false;
-  let selectedFile = null;
   let wasDragged = false;
   let isSending = false;
 
@@ -82,7 +76,7 @@
     return new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
 
-  function addBotMsg(text) {
+  function addBotMsg(text, recommendedClinics = []) {
     if (chips) chips.style.display = 'none';
     const msg = document.createElement('div');
     msg.className = 'pcai-msg pcai-msg-bot';
@@ -94,6 +88,21 @@
         <div class="pcai-msg-time">${timeNow()}</div>
       </div>`;
     messages.appendChild(msg);
+    if (Array.isArray(recommendedClinics) && recommendedClinics.length) {
+      const links = document.createElement('div');
+      links.className = 'pcai-clinic-links';
+      recommendedClinics.forEach(clinic => {
+        if (!clinic || !Number.isInteger(Number(clinic.id)) || !clinic.name) return;
+        const link = document.createElement('a');
+        link.className = 'pcai-clinic-link';
+        link.href = `${document.querySelector('meta[name="app-url"]')?.content || ''}/pages/clinic.php?id=${encodeURIComponent(clinic.id)}`;
+        link.textContent = `Visit ${clinic.name}`;
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+        links.appendChild(link);
+      });
+      if (links.childElementCount) messages.appendChild(links);
+    }
     scrollBottom();
     if (!isOpen) {
       unread++;
@@ -160,27 +169,12 @@
   }
 
   async function sendMessage(text) {
-    if (isSending || (!text.trim() && !selectedFile)) return;
+    if (isSending || !text.trim()) return;
     isSending = true;
     input.value = '';
     sendBtn.disabled = true;
 
-    if (selectedFile) {
-      const imgUrl = URL.createObjectURL(selectedFile);
-      const msg = document.createElement('div');
-      msg.className = 'pcai-msg pcai-msg-user';
-      msg.innerHTML = `
-        <div class="pcai-msg-avatar"><i class="fas fa-user"></i></div>
-        <div class="pcai-msg-body">
-          <div class="pcai-msg-name" style="text-align:right;">You</div>
-          <img src="${imgUrl}" class="pcai-img-msg" alt="pet photo">
-          ${text ? `<div class="pcai-bubble user" style="margin-top:.25rem;">${escHtml(text)}</div>` : ''}
-          <div class="pcai-msg-time">${timeNow()}</div>
-        </div>`;
-      messages.appendChild(msg);
-    } else {
-      addUserMsg(text);
-    }
+    addUserMsg(text);
 
     addTyping();
     if (chips) chips.style.display = 'none';
@@ -188,79 +182,20 @@
     try {
       const fd = new FormData();
       fd.append('csrf_token', csrf);
-      if (text) fd.append('message', text);
-      if (selectedFile) {
-        const resized = await resizeImage(selectedFile, 800, 0.80);
-        fd.append('image', resized, 'pet.jpg');
-      }
+      fd.append('message', text);
       const res = await fetch(apiUrl, { method: 'POST', body: fd });
       const data = await res.json();
-      addBotMsg(data.text || 'Sorry, I had trouble with that. Please try again.');
+      addBotMsg(data.text || 'Sorry, I had trouble with that. Please try again.', data.clinics || []);
     } catch (e) {
       addBotMsg('Chat service is temporarily unavailable. Please try again.');
     } finally {
       removeTyping();
-      clearImage();
       isSending = false;
       sendBtn.disabled = false;
       input.focus();
       scrollBottom();
     }
   }
-  function resizeImage(file, maxSize, quality) {
-    return new Promise(resolve => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        let w = img.width, h = img.height;
-        if (w > maxSize || h > maxSize) {
-          const ratio = Math.min(maxSize / w, maxSize / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', quality);
-      };
-      img.onerror = () => resolve(file);
-      img.src = url;
-    });
-  }
-
-  function clearImage() {
-    selectedFile = null;
-    if (imgInput) imgInput.value = '';
-    if (imgBar)   imgBar.style.display = 'none';
-    if (imgThumb) imgThumb.src = '';
-  }
-
-  // Image input handler
-  if (imgInput) {
-    const imgBtn = document.getElementById('pcaiImgBtn');
-    if (imgBtn) imgBtn.addEventListener('click', () => imgInput.click());
-    imgInput.addEventListener('change', () => {
-      const file = imgInput.files[0];
-      if (!file) return;
-      if (file.size > 5 * 1024 * 1024) {
-        addBotMsg('That image is too large (max 5MB). Please try a smaller photo. 📸');
-        imgInput.value = '';
-        return;
-      }
-      selectedFile = file;
-      const reader = new FileReader();
-      reader.onload = e => {
-        if (imgThumb) imgThumb.src = e.target.result;
-        if (imgName)  imgName.textContent = file.name.length > 22 ? file.name.substring(0,20)+'…' : file.name;
-        if (imgBar)   imgBar.style.display = 'flex';
-        if (!isOpen) openWidget();
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  if (imgRemove) imgRemove.addEventListener('click', clearImage);
 
   toggle.addEventListener('click', (e) => {
     if (wasDragged) {
@@ -279,7 +214,6 @@
     welcome.innerHTML = '<div class="pcai-msg-avatar"><i class="fas fa-paw"></i></div><div class="pcai-msg-body"><div class="pcai-msg-name">PetCareAI</div><div class="pcai-bubble bot">Hi! Need help finding a groomer or have a pet care question?</div><div class="pcai-msg-time">' + timeNow() + '</div></div>';
     messages.appendChild(welcome);
     if (chips) chips.style.display = 'flex';
-    clearImage();
   });
 
   sendBtn.addEventListener('click', () => sendMessage(input.value.trim()));

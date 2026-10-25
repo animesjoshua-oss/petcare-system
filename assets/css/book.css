@@ -1,4 +1,89 @@
 /* ── Pet select card ───────────────────────────────────────── */
+.booking-page {
+  width: min(100%, 1080px);
+  margin-inline: auto;
+}
+.booking-page > .dash-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+.booking-page > .dash-header .dash-breadcrumb {
+  justify-content: center;
+}
+.booking-page > .card,
+.booking-page > .alert {
+  width: min(100%, 900px);
+  margin-inline: auto;
+}
+.booking-page > .card .card-body {
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+}
+#bookForm {
+  width: min(100%, 700px);
+  margin-inline: auto;
+}
+.booking-page > .card:has(.booking-steps) {
+  width: min(100%, 900px);
+}
+.booking-clinic-select {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+.booking-clinic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
+  margin-top: .75rem;
+}
+.booking-clinic-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 0 0 1rem;
+  overflow: hidden;
+  text-align: left;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s, transform .2s;
+}
+.booking-clinic-option:hover { transform: translateY(-2px); border-color: var(--primary); }
+.booking-clinic-option.selected { border: 2px solid var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+.booking-clinic-cover {
+  display: block;
+  width: 100%;
+  height: 100px;
+  background: linear-gradient(135deg,var(--primary),var(--secondary));
+  background-position: center;
+  background-size: cover;
+}
+.booking-clinic-logo {
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 .5rem 1rem;
+  border: 3px solid var(--card);
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--card);
+}
+.booking-clinic-logo-placeholder { display: grid; place-items: center; color: var(--primary); font-size: 1.25rem; }
+.booking-clinic-name { padding: 0 1rem; font-weight: 700; }
+.booking-clinic-city { padding: .35rem 1rem 0; color: var(--text-muted); font-size: .82rem; }
+.booking-clinic-check { position: absolute; top: .7rem; right: .7rem; display: grid; place-items: center; width: 27px; height: 27px; color: #fff; background: var(--primary); border: 2px solid #fff; border-radius: 50%; opacity: 0; transform: scale(.8); transition: .2s; }
+.booking-clinic-option.selected .booking-clinic-check { opacity: 1; transform: scale(1); }
+@media (max-width: 520px) { .booking-clinic-grid { grid-template-columns: 1fr 1fr; gap: .65rem; } .booking-clinic-cover { height: 78px; } .booking-clinic-name,.booking-clinic-city { padding-left: .7rem; padding-right: .7rem; } }
+
 .pet-select-card {
   border:2px solid var(--border);border-radius:var(--radius-sm);
   padding:.85rem 1.25rem;text-align:center;min-width:100px;

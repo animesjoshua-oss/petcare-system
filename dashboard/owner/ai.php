@@ -81,14 +81,7 @@ Provide a brief, professional summary of the pet's current health status, any no
                 $aiText = $ai['text'];
                 $result = $aiText; $resultType = 'success';
 
-                // Save to DB
-                if ($aiType === 'summary') {
-                    $db->prepare('INSERT INTO ai_summaries (pet_id,generated_by,summary,prompt_used) VALUES (?,?,?,?)')
-                       ->execute([$petId,$user['id'],$aiText,$prompt]);
-                } else {
-                    $db->prepare('INSERT INTO ai_recommendations (pet_id,generated_by,recommendation_type,recommendation,prompt_used) VALUES (?,?,?,?,?)')
-                       ->execute([$petId,$user['id'],$aiType,$aiText,$prompt]);
-                }
+                // AI output is displayed for this request only and is not persisted.
             } else {
                 $result = $ai['text'];
                 $resultType = 'warning';
@@ -166,7 +159,7 @@ if ($prePet) {
         <?php if ($resultType === 'success'): ?>
         <div style="display:flex;align-items:center;gap:.5rem;margin-top:.75rem;padding:.6rem 1rem;background:rgba(16,185,129,.1);border-radius:var(--radius-sm);border:1px solid rgba(16,185,129,.3);">
           <i class="fas fa-check-circle" style="color:var(--success);"></i>
-          <span style="font-size:.82rem;color:var(--success);font-weight:600;">AI recommendation saved to your records successfully!</span>
+          <span style="font-size:.82rem;color:var(--success);font-weight:600;">AI result generated. It is shown here only and was not saved.</span>
         </div>
         <?php endif; ?>
         <?php elseif ($pastRecs): ?>

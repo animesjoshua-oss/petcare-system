@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
 requireRole(['admin', 'superadmin']);
+$user = currentUser();
+if (isGroomerAdmin($user)) { http_response_code(403); exit; }
 
 $userId = filter_input(INPUT_GET, 'user_id', FILTER_VALIDATE_INT);
 $side = $_GET['side'] ?? '';

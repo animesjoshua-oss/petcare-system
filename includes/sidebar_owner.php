@@ -39,28 +39,6 @@ $pendingCount = (int)$pendingAppts->fetchColumn();
 
     <a href="<?= APP_URL ?>/dashboard/owner/ratings.php"      class="sidebar-link"><i class="fas fa-star"></i><span class="sidebar-link-text"> My Ratings</span></a>
     <a href="<?= APP_URL ?>/dashboard/owner/favorites.php"    class="sidebar-link"><i class="fas fa-heart"></i><span class="sidebar-link-text"> Favorite Clinics</span></a>
-    <?php
-    // Unread reply count
-    try {
-        $ownerMsgReplies = (int)getDB()->prepare("
-            SELECT COUNT(*) FROM contact_messages
-            WHERE user_id = ? AND status = 'replied'
-        ")->execute([$user['id']]) ? getDB()->prepare("
-            SELECT COUNT(*) FROM contact_messages
-            WHERE user_id = ? AND status = 'replied'
-        ")->execute([$user['id']]) : 0;
-        $msgsStmt = getDB()->prepare("SELECT COUNT(*) FROM contact_messages WHERE user_id=? AND status='replied'");
-        $msgsStmt->execute([$user['id']]);
-        $ownerMsgReplies = (int)$msgsStmt->fetchColumn();
-    } catch (\Exception $e) { $ownerMsgReplies = 0; }
-    ?>
-    <a href="<?= APP_URL ?>/dashboard/owner/my-messages.php" class="sidebar-link">
-      <i class="fas fa-envelope"></i>
-      <span class="sidebar-link-text"> My Messages</span>
-      <?php if ($ownerMsgReplies > 0): ?>
-        <span class="sidebar-badge"><?= $ownerMsgReplies ?></span>
-      <?php endif; ?>
-    </a>
     <a href="<?= APP_URL ?>/auth/logout.php"                       class="sidebar-link sidebar-logout"><i class="fas fa-sign-out-alt"></i><span class="sidebar-link-text"> Logout</span></a>
   </nav>
 </aside>

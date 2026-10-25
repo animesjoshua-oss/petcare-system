@@ -1,14 +1,17 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/clinic_admin_profile.php';
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) { header('Location: clinics.php'); exit; }
 
-$stmt = getDB()->prepare('SELECT c.* FROM clinics c WHERE c.id=? AND c.is_active=1');
+$stmt = getDB()->prepare('SELECT c.* FROM clinics c WHERE c.id=? AND c.is_active=1 AND c.is_verified=1');
 $stmt->execute([$id]);
 $clinic = $stmt->fetch();
 if (!$clinic) { header('Location: clinics.php'); exit; }
 
 $pageTitle = $clinic['name'];
+$serviceFilter = (string)($_GET['service_type'] ?? '');
+if (!in_array($serviceFilter, ['', 'veterinary', 'grooming'], true)) $serviceFilter = '';
 
 // Staff assigned to the clinic
 $vets = getDB()->prepare('
@@ -31,15 +34,20 @@ $groomers = getDB()->prepare('
 $groomers->execute([$id]); $groomers = $groomers->fetchAll();
 
 // The clinic admin is the staff member assigned to manage this clinic.
-$adminStmt = getDB()->prepare('SELECT u.first_name,u.last_name FROM clinics c JOIN users u ON u.id=c.admin_id WHERE c.id=? AND u.is_active=1');
+ensureClinicAdminProfilesTable(getDB());
+$adminStmt = getDB()->prepare('SELECT c.clinic_type,u.first_name,u.last_name,ap.specialization,ap.bio FROM clinics c JOIN users u ON u.id=c.admin_id LEFT JOIN clinic_admin_profiles ap ON ap.user_id=u.id WHERE c.id=? AND u.is_active=1');
 $adminStmt->execute([$id]); $clinicAdmin=$adminStmt->fetch();
 $teamMembers=[];
 foreach ($vets as $staff) $teamMembers[]=['name'=>'Dr. '.$staff['first_name'].' '.$staff['last_name'],'role'=>'Veterinarian','description'=>$staff['bio'] ?? '','specialization'=>$staff['specialization'] ?? ''];
 foreach ($groomers as $staff) $teamMembers[]=['name'=>$staff['first_name'].' '.$staff['last_name'],'role'=>'Groomer','description'=>$staff['bio'] ?? '','specialization'=>$staff['specialization'] ?? ''];
-if ($clinicAdmin) $teamMembers[]=['name'=>$clinicAdmin['first_name'].' '.$clinicAdmin['last_name'],'role'=>'Clinic Administrator','description'=>'Administrator assigned to manage this veterinary clinic.','specialization'=>'Clinic administration'];
+if ($clinicAdmin) $teamMembers[]=['name'=>$clinicAdmin['first_name'].' '.$clinicAdmin['last_name'],'role'=>($clinicAdmin['clinic_type'] ?? 'veterinary') === 'grooming' ? 'Groomer Admin' : 'Vet Admin','description'=>$clinicAdmin['bio'] ?: 'Clinic administrator.','specialization'=>$clinicAdmin['specialization'] ?: 'Clinic administration'];
 
 // Services
-$services = getDB()->prepare('SELECT * FROM services WHERE clinic_id=? AND is_active=1 ORDER BY service_type, name');
+$serviceSql = 'SELECT * FROM services WHERE clinic_id=? AND is_active=1';
+if ($serviceFilter === 'veterinary') $serviceSql .= " AND service_type IN ('veterinary','both')";
+if ($serviceFilter === 'grooming') $serviceSql .= " AND service_type IN ('grooming','both')";
+$serviceSql .= ' ORDER BY service_type, name';
+$services = getDB()->prepare($serviceSql);
 $services->execute([$id]); $services = $services->fetchAll();
 $clinicBookingType = 'veterinary';
 $hasVeterinaryService = false;
@@ -133,7 +141,7 @@ if (!empty($operatingHours)) {
           <?php if ($clinic['logo']): ?><img src="<?= APP_URL ?>/<?= sanitize($clinic['logo']) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:16px;" alt=""><?php else: ?><i class="fas fa-hospital-alt"></i><?php endif; ?>
         </div>
         <div style="color:#fff;">
-          <h1 style="font-size:1.75rem;font-weight:800;margin-bottom:.25rem;"><?= sanitize($clinic['name']) ?></h1>
+          <h1 style="font-size:1.75rem;font-weight:800;margin-bottom:.25rem;color:#fff !important;text-shadow:0 2px 8px rgba(0,0,0,.75);"><?= sanitize($clinic['name']) ?></h1>
           <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-size:.875rem;opacity:.9;">
             <span><i class="fas fa-map-marker-alt"></i> <?= sanitize($clinic['city']) ?>, Pangasinan</span>
             <?php if ($clinic['phone']): ?><span><i class="fas fa-phone"></i> <?= sanitize($clinic['phone']) ?></span><?php endif; ?>
@@ -163,6 +171,13 @@ if (!empty($operatingHours)) {
         <div class="card" style="margin-bottom:1.5rem;"><div class="card-body">
           <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:.75rem;"><i class="fas fa-info-circle" style="color:var(--primary);margin-right:.5rem"></i>About</h3>
           <p style="color:var(--text-muted);line-height:1.8;"><?= nl2br(sanitize($clinic['description'])) ?></p>
+        </div></div>
+        <?php endif; ?>
+
+        <?php if (!empty($clinic['accessibility_notes'])): ?>
+        <div class="card" style="margin-bottom:1.5rem;"><div class="card-body">
+          <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:.75rem;"><i class="fas fa-wheelchair" style="color:var(--primary);margin-right:.5rem"></i>Accessibility</h3>
+          <p style="color:var(--text-muted);line-height:1.8;white-space:pre-line;"><?= sanitize($clinic['accessibility_notes']) ?></p>
         </div></div>
         <?php endif; ?>
 
@@ -229,7 +244,7 @@ if (!empty($operatingHours)) {
 
         <!-- Services -->
         <div class="card" style="margin-bottom:1.5rem;"><div class="card-body">
-          <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:1.25rem;"><i class="fas fa-list" style="color:var(--primary);margin-right:.5rem"></i>Services Offered</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;"><h3 style="font-size:1.1rem;font-weight:700;margin:0;"><i class="fas fa-list" style="color:var(--primary);margin-right:.5rem"></i>Services Offered</h3><form method="GET" style="display:flex;align-items:center;gap:.5rem;"><input type="hidden" name="id" value="<?= (int)$id ?>"><label for="serviceTypeFilter" class="form-label" style="margin:0;white-space:nowrap;">Show</label><select id="serviceTypeFilter" name="service_type" class="form-control" aria-label="Filter services by service type" onchange="this.form.submit()"><option value="" <?= $serviceFilter === '' ? 'selected' : '' ?>>All services</option><option value="veterinary" <?= $serviceFilter === 'veterinary' ? 'selected' : '' ?>>Veterinarian</option><option value="grooming" <?= $serviceFilter === 'grooming' ? 'selected' : '' ?>>Groomer</option></select></form></div>
           <?php if ($services): ?>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
             <?php foreach (array_slice($services, 0, 6) as $svc): ?>
@@ -237,6 +252,7 @@ if (!empty($operatingHours)) {
               <div>
                 <div style="font-weight:600;font-size:.9rem;"><?= sanitize($svc['name']) ?></div>
                 <?php if ($svc['duration_minutes']): ?><div style="font-size:.78rem;color:var(--text-muted)"><?= $svc['duration_minutes'] ?> min</div><?php endif; ?>
+                <?php foreach (serviceDiscountsForService($svc, $serviceFilter !== '' ? $serviceFilter : null) as $discount): ?><div style="font-size:.75rem;color:var(--success);font-weight:600;"><?= sanitize($discount['label']) ?>: <?= sanitize($discount['details']) ?></div><?php endforeach; ?>
               </div>
               <?php if ($svc['price']): ?><span style="font-weight:700;color:var(--primary);font-size:.9rem;">₱<?= number_format($svc['price'],0) ?></span><?php endif; ?>
             </div>
@@ -253,6 +269,7 @@ if (!empty($operatingHours)) {
                 <div>
                   <div style="font-weight:600;font-size:.9rem;"><?= sanitize($svc['name']) ?></div>
                   <?php if ($svc['duration_minutes']): ?><div style="font-size:.78rem;color:var(--text-muted)"><?= $svc['duration_minutes'] ?> min</div><?php endif; ?>
+                <?php foreach (serviceDiscountsForService($svc, $serviceFilter !== '' ? $serviceFilter : null) as $discount): ?><div style="font-size:.75rem;color:var(--success);font-weight:600;"><?= sanitize($discount['label']) ?>: <?= sanitize($discount['details']) ?></div><?php endforeach; ?>
                 </div>
                 <?php if ($svc['price']): ?><span style="font-weight:700;color:var(--primary);font-size:.9rem;">₱<?= number_format($svc['price'],0) ?></span><?php endif; ?>
               </div>
@@ -279,7 +296,7 @@ if (!empty($operatingHours)) {
                   <div style="font-size:.75rem;color:var(--text-muted)"><?= timeAgo($r['created_at']) ?></div>
                 </div>
               </div>
-              <div class="stars"><?= str_repeat('<i class="fas fa-star"></i>', (int)$r['clinic_rating']) ?></div>
+              <?= starRating((float)$r['clinic_rating'], false) ?>
             </div>
             <?php if ($r['comment']): ?><p style="font-size:.875rem;color:var(--text-muted);line-height:1.7;"><?= sanitize($r['comment']) ?></p><?php endif; ?>
           </div>
@@ -318,19 +335,6 @@ if (!empty($operatingHours)) {
         </div>
         <?php endif; ?>
 
-        <!-- Quick Book -->
-        <div class="card" style="background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;">
-          <div class="card-body" style="text-align:center;">
-            <i class="fas fa-calendar-check" style="font-size:2.5rem;margin-bottom:1rem;opacity:.85;"></i>
-            <h3 style="font-weight:700;margin-bottom:.5rem;">Ready to Book?</h3>
-            <p style="opacity:.85;font-size:.875rem;margin-bottom:1.25rem;">Select a service and pick a time that works for you.</p>
-            <?php if (isLoggedIn() && currentUser()['role_name']==='pet_owner'): ?>
-            <a href="<?= APP_URL ?>/dashboard/owner/book.php?clinic=<?= $id ?>&amp;type=<?= $clinicBookingType ?>" class="btn" style="background:#fff;color:var(--primary);font-weight:700;width:100%;justify-content:center;">Book Appointment</a>
-            <?php else: ?>
-            <a href="<?= APP_URL ?>/auth/register.php" class="btn" style="background:#fff;color:var(--primary);font-weight:700;width:100%;justify-content:center;">Get Started</a>
-            <?php endif; ?>
-          </div>
-        </div>
       </div>
     </div>
   </div>

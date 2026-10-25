@@ -13,7 +13,7 @@ if (!$pet) { header('Location: pets.php'); exit; }
 $pageTitle = $pet['name'] . ' – Health Profile';
 $isDashboard = true;
 
-// AI suggestions use the latest completed vet and grooming appointments only.
+// AI suggestions use the latest completed appointments and latest medical record.
 $historySql = "SELECT a.id, a.clinic_id, a.appointment_type, a.appointment_date, a.appointment_time,
     c.name AS clinic_name, COALESCE(s.name, a.appointment_type) AS service_name
     FROM appointments a
@@ -28,7 +28,26 @@ $getLatestAppointment->execute([$id, $user['id'], 'veterinary']);
 $lastVetAppointment = $getLatestAppointment->fetch() ?: null;
 $getLatestAppointment->execute([$id, $user['id'], 'grooming']);
 $lastGroomingAppointment = $getLatestAppointment->fetch() ?: null;
-$hasAppointmentHistory = $lastVetAppointment || $lastGroomingAppointment;
+$latestRecordStmt = $db->prepare("SELECT hr.id,hr.record_date,hr.record_type,hr.title,hr.description,hr.diagnosis,hr.treatment,hr.medications,hr.next_appointment,c.id AS clinic_id,c.name AS clinic_name
+    FROM pet_health_records hr
+    LEFT JOIN veterinarians v ON v.id=hr.vet_id
+    LEFT JOIN clinics c ON c.id=v.clinic_id
+    WHERE hr.pet_id=?
+    ORDER BY hr.record_date DESC,hr.id DESC
+    LIMIT 1");
+$latestRecordStmt->execute([$id]);
+$latestMedicalRecord = $latestRecordStmt->fetch() ?: null;
+$latestRecordContext = [];
+if ($latestMedicalRecord) {
+    foreach (['record_date'=>'Date','record_type'=>'Type','title'=>'Title','description'=>'Notes','diagnosis'=>'Diagnosis','treatment'=>'Treatment','medications'=>'Medications','next_appointment'=>'Follow-up date','clinic_name'=>'Clinic'] as $key=>$label) {
+        $value = trim(preg_replace('/\\s+/u', ' ', (string)($latestMedicalRecord[$key] ?? '')));
+        if ($value !== '') $latestRecordContext[$label] = $value;
+    }
+}
+$latestRecordExcerpt = $latestRecordContext
+    ? substr((string)json_encode($latestRecordContext, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), 0, 1600)
+    : 'No medical record is available.';
+$hasMedicalRecord = (bool)$latestMedicalRecord;
 $summaryOutput = '';
 $suggestion = '';
 $suggestionError = '';
@@ -38,40 +57,45 @@ $suggestionAppointmentType = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate_suggestion') {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $suggestionError = 'Your session could not verify this request. Refresh the page and try again.';
-    } elseif (!$hasAppointmentHistory) {
-        $suggestionError = 'A suggestion is available after a completed appointment.';
     } else {
         $historyFacts = [];
         if ($lastVetAppointment) {
             $historyFacts[] = 'Last completed veterinary appointment: ' . $lastVetAppointment['appointment_date'] . '; service: ' . $lastVetAppointment['service_name'] . '; clinic: ' . $lastVetAppointment['clinic_name'] . '.';
-        } else {
-            $historyFacts[] = 'No completed veterinary appointment is recorded.';
         }
         if ($lastGroomingAppointment) {
             $historyFacts[] = 'Last completed grooming appointment: ' . $lastGroomingAppointment['appointment_date'] . '; service: ' . $lastGroomingAppointment['service_name'] . '; clinic: ' . $lastGroomingAppointment['clinic_name'] . '.';
-        } else {
-            $historyFacts[] = 'No completed grooming appointment is recorded.';
         }
-        $historyText = implode("\n", $historyFacts);
+        $historyText = $historyFacts ? implode("\n", $historyFacts) : 'No completed appointment details are available.';
 
-        $summaryPrompt = "Summarize the latest completed veterinary and grooming appointment history in two short labeled lines. Include the date, service, and clinic exactly as recorded for each available appointment. State clearly when one type has no completed record. Use only the appointment facts below. Do not add pet names, medical conclusions, or recommendations.\n\n{$historyText}";
-        $aiSummary = callGroq($summaryPrompt, 180);
-        $summaryText = $aiSummary['success'] ? trim($aiSummary['text']) : '';
-        $fallbackSummary = implode("\n", $historyFacts);
-        $summaryOutput = (strlen($summaryText) >= 35 && preg_match('/[.!?]$/', $summaryText)) ? $summaryText : $fallbackSummary;
+        if ($historyFacts) {
+            $summaryPrompt = "Summarize only the completed appointments listed below in up to three short labeled lines. Do not mention appointment types that are not listed, and do not say that an appointment is missing, unavailable, or unrecorded. Use only facts present below. Do not include medical records, diagnosis, urgency, or recommendations.\n\n{$historyText}";
+            $aiSummary = callGroq($summaryPrompt, 240);
+            $summaryText = $aiSummary['success'] ? trim($aiSummary['text']) : '';
+            $fallbackSummary = implode("\n", $historyFacts);
+            $summaryMentionsMissingAppointments = preg_match('/\b(no|not|never)\b.{0,60}\b(appointment|grooming|veterinary|vet)\b/i', $summaryText);
+            $summaryOutput = (strlen($summaryText) >= 35 && preg_match('/[.!?]$/', $summaryText) && !$summaryMentionsMissingAppointments) ? $summaryText : $fallbackSummary;
+        }
 
         $baseSuggestion = '';
         if ($lastGroomingAppointment) {
             $daysSinceGrooming = (new DateTimeImmutable($lastGroomingAppointment['appointment_date']))
                 ->diff(new DateTimeImmutable('today'))->days;
             $groomDate = date('M j, Y', strtotime($lastGroomingAppointment['appointment_date']));
-            if ($daysSinceGrooming < 14) {
+            $groomingDate = new DateTimeImmutable($lastGroomingAppointment['appointment_date']);
+            $today = new DateTimeImmutable('today');
+            $groomingIsFuture = $groomingDate > $today;
+            $groomingIsRecent = !$groomingIsFuture && $daysSinceGrooming < 14;
+            if ($groomingIsFuture) {
+                $baseSuggestion = "A grooming appointment is scheduled for {$groomDate} at {$lastGroomingAppointment['clinic_name']}. You can explore clinics for another service if your pet needs one.";
+            } elseif ($groomingIsRecent) {
                 $baseSuggestion = "The last grooming appointment was on {$groomDate}, less than two weeks ago. Plan the next grooming visit later.";
                 if ($lastVetAppointment) {
                     $vetDate = date('M j, Y', strtotime($lastVetAppointment['appointment_date']));
                     $baseSuggestion .= " The last vet visit was {$vetDate}; you can also ask {$lastVetAppointment['clinic_name']} about a routine check-up.";
                     $suggestionClinicId = (int)$lastVetAppointment['clinic_id'];
                     $suggestionAppointmentType = 'veterinary';
+                } else {
+                    $baseSuggestion .= " Browse clinics if you would like to arrange a routine veterinary check-up.";
                 }
             } else {
                 $baseSuggestion = "The last grooming appointment was on {$groomDate} at {$lastGroomingAppointment['clinic_name']}. It has been at least two weeks, so consider booking another grooming visit.";
@@ -80,18 +104,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
             }
         } elseif ($lastVetAppointment) {
             $vetDate = date('M j, Y', strtotime($lastVetAppointment['appointment_date']));
-            $baseSuggestion = "The last veterinary appointment was on {$vetDate} at {$lastVetAppointment['clinic_name']}. Consider booking a routine check-up at that clinic.";
-            $suggestionClinicId = (int)$lastVetAppointment['clinic_id'];
+            $baseSuggestion = "The last veterinary appointment was on {$vetDate} at {$lastVetAppointment['clinic_name']}. You could also browse clinics for a grooming appointment.";
+            $suggestionAppointmentType = 'grooming';
+        } else {
+            $baseSuggestion = "Explore nearby clinics to arrange a routine check-up or grooming appointment for {$pet['name']}.";
             $suggestionAppointmentType = 'veterinary';
         }
 
-        $upsellPrompt = "Rewrite the following appointment-based offer as a warm, clear message to the pet owner. Preserve the exact recommendation, dates, and clinic names. Do not add a pet name, medical claim, fact, service, or schedule. Return complete sentences only, in 1-2 sentences.\n\nOffer: {$baseSuggestion}";
+        $upsellPrompt = "Rewrite the following appointment-focused suggestion as a warm, clear invitation to book or browse clinics. Preserve only the appointment types, dates, and clinic names provided. When there is no appointment history, do not mention missing or unrecorded appointments; simply invite the owner to explore a check-up or grooming service. Do not add medical advice, diagnosis, urgency, services, or schedules. Return complete sentences only, in 1-2 sentences.\n\nAppointment history: {$historyText}\n\nSuggested next step: {$baseSuggestion}";
         $aiUpsell = callGroq($upsellPrompt, 140);
         $upsellText = $aiUpsell['success'] ? trim($aiUpsell['text']) : '';
-        $suggestion = (strlen($upsellText) >= 35 && preg_match('/[.!?]$/', $upsellText)) ? $upsellText : $baseSuggestion;
+        $suggestionMentionsMissingAppointments = preg_match('/\b(no|not|never)\b.{0,60}\b(appointment|grooming|veterinary|vet)\b/i', $upsellText);
+        $suggestion = (strlen($upsellText) >= 35 && preg_match('/[.!?]$/', $upsellText) && !$suggestionMentionsMissingAppointments) ? $upsellText : $baseSuggestion;
 
-        $db->prepare('INSERT INTO ai_recommendations (pet_id, generated_by, recommendation_type, recommendation, prompt_used) VALUES (?, ?, ?, ?, ?)')
-            ->execute([$id, $user['id'], 'general', $suggestion, $upsellPrompt]);
     }
 }
 // Health records
@@ -207,7 +232,7 @@ $appts->execute([$id]); $appts = $appts->fetchAll();
                 <?php endforeach; ?>
                 </tbody>
               </table>
-              <?php else: ?><div class="empty-state"><i class="fas fa-calendar"></i><h3>No appointments yet</h3></div><?php endif; ?>
+              <?php else: ?><div class="empty-state"><i class="fas fa-calendar"></i><h3>Plan a visit for <?= sanitize($pet['name']) ?></h3><p>Browse clinics to find check-up and grooming services.</p><a class="btn btn-primary" href="<?= APP_URL ?>/pages/clinics.php"><i class="fas fa-hospital"></i> Browse clinics</a></div><?php endif; ?>
             </div>
           </div>
         </div>
@@ -217,10 +242,10 @@ $appts->execute([$id]); $appts = $appts->fetchAll();
           <div class="card">
             <div class="card-header"><h3>AI Suggestions</h3></div>
             <div class="card-body">
-              <p style="margin-bottom:1rem;color:var(--text-muted);">AI reviews the latest completed vet and grooming appointments, then suggests a relevant next service.</p>
+              <p style="margin-bottom:1rem;color:var(--text-muted);">Appointment suggestions are based on your pet’s completed appointment history and help you plan a future visit.</p>
               <?php if ($summaryOutput): ?>
               <section style="padding:1rem 1.1rem;margin-bottom:1rem;border:1px solid var(--border);border-radius:var(--radius-sm);">
-                <h4 style="font-size:.95rem;margin-bottom:.5rem;"><i class="fas fa-clipboard-list" style="color:var(--primary);margin-right:.35rem;"></i>Latest Appointment Summary</h4>
+                <h4 style="font-size:.95rem;margin-bottom:.5rem;"><i class="fas fa-clipboard-list" style="color:var(--primary);margin-right:.35rem;"></i>Latest Care Summary</h4>
                 <p style="line-height:1.65;white-space:pre-line;"><?= sanitize($summaryOutput) ?></p>
               </section>
               <?php endif; ?>
@@ -229,19 +254,17 @@ $appts->execute([$id]); $appts = $appts->fetchAll();
               <div class="alert alert-info" role="status" style="line-height:1.65;"><?= nl2br(sanitize($suggestion)) ?></div>
               <?php if ($suggestionClinicId > 0): ?>
               <a href="<?= APP_URL ?>/pages/clinic.php?id=<?= $suggestionClinicId ?>" class="btn btn-primary"><i class="fas fa-calendar-plus"></i> <?= $suggestionAppointmentType === 'grooming' ? 'Book grooming again' : 'Appoint again' ?></a>
+              <?php else: ?>
+              <a href="<?= APP_URL ?>/pages/clinics.php" class="btn btn-primary"><i class="fas fa-hospital"></i> Browse clinics</a>
               <?php endif; ?>
               <?php elseif ($suggestionError): ?>
               <div class="alert alert-warning" role="alert"><?= sanitize($suggestionError) ?></div>
               <?php endif; ?>
-              <?php if (!$hasAppointmentHistory): ?>
-              <div class="empty-state"><i class="fas fa-calendar-check"></i><h3>No completed appointments yet</h3><p>Suggestions will be available after an appointment is completed.</p></div>
-              <?php else: ?>
               <form method="POST" action="pet-detail.php?id=<?= $id ?>" id="suggestionForm">
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="generate_suggestion">
                 <button type="submit" class="btn btn-secondary"><i class="fas fa-wand-magic-sparkles"></i> <?= $suggestion ? 'Refresh suggestion' : 'Get a suggestion' ?></button>
               </form>
-              <?php endif; ?>
             </div>
           </div>
         </div>

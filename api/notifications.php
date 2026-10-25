@@ -24,6 +24,26 @@ if ($action === 'mark_read') {
     jsonResponse(['success'=>true]);
 }
 
+if ($action === 'delete') {
+    if ($method !== 'POST') {
+        header('Allow: POST');
+        jsonResponse(['error' => 'Method not allowed.'], 405);
+    }
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($data)) $data = $_POST;
+    $csrf = (string)($data['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    if (!verifyCsrfToken($csrf)) {
+        jsonResponse(['error' => 'Invalid CSRF token.'], 403);
+    }
+    $nid = (int)($data['id'] ?? 0);
+    if ($nid) {
+        $db->prepare('DELETE FROM notifications WHERE id=? AND user_id=?')->execute([$nid, $userId]);
+        jsonResponse(['success'=>true]);
+    } else {
+        jsonResponse(['error' => 'Notification ID required.'], 400);
+    }
+}
+
 if ($method !== 'GET') {
     header('Allow: GET');
     jsonResponse(['error' => 'Method not allowed.'], 405);

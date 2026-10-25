@@ -86,7 +86,6 @@ foreach (['pending','approved','completed','cancelled','rejected'] as $s) {
           <td><?= statusBadge($a['status']) ?></td>
           <td>
             <div style="display:flex;gap:.4rem;">
-              <a href="appointment-detail.php?id=<?= $a['id'] ?>" class="btn btn-sm btn-outline"><i class="fas fa-eye"></i></a>
               <?php if (in_array($a['status'],['pending','approved'])): ?>
               <button onclick="openCancelModal(<?= $a['id'] ?>)" class="btn btn-sm btn-danger"><i class="fas fa-times"></i> Cancel</button>
               <?php endif; ?>

@@ -4,16 +4,18 @@ $pageTitle = 'Find Clinics';
 
 $search  = sanitize($_GET['search'] ?? '');
 $city    = sanitize($_GET['city'] ?? '');
+$accessibleOnly = ($_GET['accessible'] ?? '') === '1';
 $service = sanitize($_GET['service'] ?? '');
 $sort    = sanitize($_GET['sort'] ?? 'name'); // Default to A-Z with custom city order
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 20; // Increased to show all clinics on one page
 
-$where  = ['c.is_active = 1'];
+$where  = ['c.is_active = 1', 'c.is_verified = 1'];
 $params = [];
 
-if ($search) { $where[] = '(c.name LIKE ? OR c.description LIKE ?)'; $params[] = "%$search%"; $params[] = "%$search%"; }
+if ($search) { $where[] = '(c.name LIKE ? OR c.description LIKE ? OR c.accessibility_notes LIKE ?)'; $params[] = "%$search%"; $params[] = "%$search%"; $params[] = "%$search%"; }
 if ($city)   { $where[] = 'c.city = ?'; $params[] = $city; }
+if ($accessibleOnly) $where[] = "c.accessibility_notes IS NOT NULL AND TRIM(c.accessibility_notes)<>''";
 
 $whereStr = 'WHERE ' . implode(' AND ', $where);
 
@@ -27,8 +29,8 @@ END";
 
 $orderBy  = match($sort) { 
     'name' => "$cityOrder, c.name ASC", 
-    'newest' => 'c.created_at DESC', 
-    default => 'c.average_rating DESC, c.total_ratings DESC, c.name ASC' 
+    'newest' => "$cityOrder, c.created_at DESC",
+    default => "$cityOrder, c.average_rating DESC, c.total_ratings DESC, c.name ASC"
 };
 
 $totalStmt = getDB()->prepare("SELECT COUNT(*) FROM clinics c $whereStr");
@@ -52,7 +54,7 @@ $clinics = $stmt->fetchAll();
 $cities = getDB()->query("
     SELECT DISTINCT city 
     FROM clinics 
-    WHERE is_active=1 AND city IS NOT NULL 
+    WHERE is_active=1 AND is_verified=1 AND city IS NOT NULL
     ORDER BY 
         CASE 
             WHEN city = 'Calasiao' THEN 1 
@@ -70,7 +72,7 @@ $cities = getDB()->query("
   <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));padding:3rem 0;color:#fff !important;text-align:center;">
     <div class="container">
       <h1 style="font-size:2.25rem;font-weight:800;margin-bottom:.5rem;color:#fff !important;">Find Clinics in Pangasinan</h1>
-      <p style="opacity:.9;font-size:1rem;color:#fff !important;">Browse <?= $total ?> verified veterinary and grooming centers</p>
+      <p style="opacity:.9;font-size:1rem;color:#fff !important;">Browse <?= $total ?> veterinary clinics and grooming centers</p>
     </div>
   </div>
 
@@ -85,6 +87,7 @@ $cities = getDB()->query("
               <i class="fas fa-search" style="position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted)"></i>
               <input type="text" name="search" class="form-control" placeholder="Clinic name, description…" value="<?= sanitize($search) ?>" style="padding-left:2.5rem;">
             </div>
+            <label style="display:flex;align-items:center;gap:.4rem;margin-top:.6rem;font-size:.82rem;color:var(--text-muted);"><input type="checkbox" name="accessible" value="1" <?= $accessibleOnly?'checked':'' ?>> Accessibility information available</label>
           </div>
           <div class="form-group" style="margin:0;">
             <label class="form-label">City</label>
@@ -111,7 +114,7 @@ $cities = getDB()->query("
     <!-- Results -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
       <p style="color:var(--text-muted);font-size:.9rem;">Showing <?= count($clinics) ?> of <?= $total ?> clinics</p>
-      <?php if ($search || $city): ?>
+      <?php if ($search || $city || $accessibleOnly): ?>
       <a href="clinics.php" style="font-size:.85rem;color:var(--danger);"><i class="fas fa-times"></i> Clear filters</a>
       <?php endif; ?>
     </div>

@@ -12,9 +12,10 @@ function getDB(): PDO {
     
     // Reuse existing connection if available
     if ($pdo === null) {
+        $port = defined('DB_PORT') ? DB_PORT : '3306';
         $dsn = sprintf(
-            'mysql:host=%s;dbname=%s;charset=%s',
-            DB_HOST, DB_NAME, DB_CHARSET
+            'mysql:host=%s;port=%s;dbname=%s;charset=%s',
+            DB_HOST, $port, DB_NAME, DB_CHARSET
         );
         
         $options = [
@@ -26,11 +27,19 @@ function getDB(): PDO {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            // Log the error but don't expose details to users
+            // Log the error
             error_log('DB Connection Error: ' . $e->getMessage());
+            
+            // Show error details for debugging
+            header('Content-Type: application/json');
             http_response_code(500);
-            echo json_encode(['error' => 'Database connection failed. Please try again later.']);
-            exit;
+            die(json_encode([
+                'error' => 'Database connection failed.',
+                'details' => $e->getMessage(),
+                'host' => DB_HOST,
+                'database' => DB_NAME,
+                'user' => DB_USER
+            ]));
         }
     }
     

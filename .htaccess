@@ -22,6 +22,8 @@ ErrorDocument 500 /WEB%20petcare/500.php
     RewriteRule ^docs/             - [F,L]
     RewriteRule ^_organized/       - [F,L]
     RewriteRule ^uploads/id_docs/  - [F,L]
+    RewriteRule ^uploads/clinic-applications/ - [F,L]
+    RewriteRule ^uploads/veterinarian-credentials/ - [F,L]
 
     # ── Security: Block PHP execution in uploads ─────────────────────
     RewriteRule ^uploads/.*\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi)$ - [F,L]

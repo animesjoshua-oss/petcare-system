@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
+requireRole(['pet_owner']);
 
 header('Content-Type: application/json');
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -27,6 +28,9 @@ if ($exists) {
     $db->prepare('DELETE FROM favorite_clinics WHERE user_id=? AND clinic_id=?')->execute([$userId,$clinicId]);
     jsonResponse(['success'=>true,'action'=>'removed']);
 } else {
+    $clinic = $db->prepare('SELECT id FROM clinics WHERE id=? AND is_active=1 AND is_verified=1');
+    $clinic->execute([$clinicId]);
+    if (!$clinic->fetchColumn()) jsonResponse(['error' => 'Choose an approved clinic.'], 404);
     $db->prepare('INSERT INTO favorite_clinics (user_id,clinic_id) VALUES (?,?)')->execute([$userId,$clinicId]);
     jsonResponse(['success'=>true,'action'=>'added']);
 }

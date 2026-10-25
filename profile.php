@@ -2,8 +2,10 @@
 require_once __DIR__ . '/includes/functions.php';
 requireLogin();
 $user = currentUser();
+$hideAddress = in_array($user['role_name'] ?? '', ['admin', 'vet_admin', 'veterinarian', 'vet', 'groomer'], true);
 $pageTitle = 'My Profile';
 $db = getDB();
+ensureTwoFactorSetting($db);
 $msg = ''; $msgType='success';
 
 if ($_SERVER['REQUEST_METHOD']==='POST') {
@@ -28,8 +30,18 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
                 if ($chk->fetch()) { $msg='That email is already in use.'; $msgType='danger'; }
             }
             if (!$msg) {
-                $sql = 'UPDATE users SET first_name=?,last_name=?,email=?,phone=?,address=?'.($photo?',profile_photo=?':'').' WHERE id=?';
-                $params = $photo ? [$first,$last,$email,$phone,$addr,$photo,$user['id']] : [$first,$last,$email,$phone,$addr,$user['id']];
+                $sql = 'UPDATE users SET first_name=?,last_name=?,email=?,phone=?';
+                $params = [$first,$last,$email,$phone];
+                if (!$hideAddress) {
+                    $sql .= ',address=?';
+                    $params[] = $addr;
+                }
+                if ($photo) {
+                    $sql .= ',profile_photo=?';
+                    $params[] = $photo;
+                }
+                $sql .= ' WHERE id=?';
+                $params[] = $user['id'];
                 $db->prepare($sql)->execute($params);
                 $msg='Profile updated successfully.';
             }
@@ -41,6 +53,16 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
             elseif (strlen($new)<8) { $msg='Password must be at least 8 characters.'; $msgType='danger'; }
             elseif ($new!==$conf) { $msg='Passwords do not match.'; $msgType='danger'; }
             else { $db->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([hashPassword($new),$user['id']]); $msg='Password changed successfully.'; }
+        } elseif ($_POST['action']==='update_two_factor') {
+            $curr = $_POST['current_password'] ?? '';
+            if (!verifyPassword($curr, $user['password_hash'])) {
+                $msg='Enter your current password to change two-factor authentication.';
+                $msgType='danger';
+            } else {
+                $enabled = isset($_POST['two_factor_enabled']) ? 1 : 0;
+                $db->prepare('UPDATE users SET two_factor_enabled=? WHERE id=?')->execute([$enabled,$user['id']]);
+                $msg = $enabled ? 'Email two-factor authentication is enabled.' : 'Email two-factor authentication is disabled.';
+            }
         }
         // Reload
         $stmt=$db->prepare('SELECT u.*,r.name AS role_name FROM users u JOIN roles r ON u.role_id=r.id WHERE u.id=?');
@@ -79,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
             </div>
             <div class="form-group"><label class="form-label">Email</label><input type="email" name="email" class="form-control" value="<?= sanitize($user['email']) ?>"></div>
             <div class="form-group"><label class="form-label">Phone</label><input type="tel" name="phone" class="form-control" value="<?= sanitize($user['phone']??'') ?>"></div>
-            <div class="form-group"><label class="form-label">Address</label><textarea name="address" class="form-control" rows="2"><?= sanitize($user['address']??'') ?></textarea></div>
+            <?php if (!$hideAddress): ?><div class="form-group"><label class="form-label">Address</label><textarea name="address" class="form-control" rows="2"><?= sanitize($user['address']??'') ?></textarea></div><?php endif; ?>
             <div class="form-group"><label class="form-label">Profile Photo</label><div class="upload-area"><img class="upload-preview" style="display:none;width:60px;height:60px;border-radius:50%;object-fit:cover;" alt=""><input type="file" name="profile_photo" accept="image/*" class="form-control"></div></div>
             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
           </form>
@@ -93,6 +115,17 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
             <div class="form-group"><label class="form-label">New Password</label><div class="input-group"><input type="password" name="new_password" class="form-control" required><button type="button" class="toggle-pw"><i class="fas fa-eye-slash"></i></button></div></div>
             <div class="form-group"><label class="form-label">Confirm New Password</label><div class="input-group"><input type="password" name="confirm_password" class="form-control" required><button type="button" class="toggle-pw"><i class="fas fa-eye-slash"></i></button></div></div>
             <button type="submit" class="btn btn-outline"><i class="fas fa-lock"></i> Change Password</button>
+          </form>
+        </div></div>
+
+        <!-- Two-factor authentication -->
+        <div class="card"><div class="card-header"><h3>Two-Factor Authentication</h3></div><div class="card-body">
+          <p style="color:var(--text-muted);margin-bottom:1rem;">When enabled, we’ll email a one-time code after you enter your password. This setting is off by default.</p>
+          <form method="POST">
+            <?= csrfField() ?><input type="hidden" name="action" value="update_two_factor">
+            <div class="form-group"><label style="display:flex;align-items:center;gap:.65rem;"><input type="checkbox" name="two_factor_enabled" value="1" <?= !empty($user['two_factor_enabled']) ? 'checked' : '' ?>> Enable email two-factor authentication</label></div>
+            <div class="form-group"><label class="form-label">Current Password</label><input type="password" name="current_password" class="form-control" autocomplete="current-password" required></div>
+            <button type="submit" class="btn btn-outline"><i class="fas fa-shield-alt"></i> Save Security Setting</button>
           </form>
         </div></div>
       </div>
