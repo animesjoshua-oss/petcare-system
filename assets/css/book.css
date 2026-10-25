@@ -203,3 +203,93 @@ input.pet-radio:checked + .pet-select-card {
 .card:has(#bookForm):hover { transform:none !important;box-shadow:var(--shadow-sm) !important; }
 input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(0.5);cursor:pointer;opacity:.7; }
 input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity:1; }
+
+
+/* ============================================================
+   PROMO CODE SECTION
+   ============================================================ */
+
+.promo-code-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.promo-code-input-wrapper {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.promo-code-input-wrapper input {
+  flex: 1;
+}
+
+.promo-code-input-wrapper .btn {
+  min-width: 100px;
+}
+
+.promo-message {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.promo-message.success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--success);
+}
+
+.promo-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--danger);
+}
+
+.promo-discount-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+  border: 1px dashed rgba(79, 70, 229, 0.4);
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.promo-discount-display i {
+  font-size: 1.25rem;
+  color: var(--success);
+}
+
+.promo-remove-btn {
+  margin-left: auto;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--danger);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.promo-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .promo-code-input-wrapper {
+    flex-direction: column;
+  }
+  
+  .promo-code-input-wrapper .btn {
+    width: 100%;
+  }
+}

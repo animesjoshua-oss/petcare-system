@@ -10491,6 +10491,28 @@ p {
   padding-top: 20px;
 }
 
+.promo-use-btn {
+  display: block;
+  width: 100%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 12px;
+  text-decoration: none;
+}
+
+.promo-use-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+  color: #ffffff;
+}
+
 .promo-code-box {
   display: flex;
   align-items: center;

@@ -86,6 +86,9 @@ $pageTitle = 'Promo Codes & Deals';
                 <i class="far fa-copy"></i>
               </button>
             </div>
+            <a href="<?= APP_URL ?>/dashboard/owner/book.php?promo=PETCARE10" class="promo-use-btn">
+              <i class="fas fa-calendar-check"></i> Use Now
+            </a>
           </div>
         </div>
       </div>
@@ -112,6 +115,9 @@ $pageTitle = 'Promo Codes & Deals';
                 <i class="far fa-copy"></i>
               </button>
             </div>
+            <a href="<?= APP_URL ?>/dashboard/owner/book.php?promo=GROOM15" class="promo-use-btn">
+              <i class="fas fa-calendar-check"></i> Use Now
+            </a>
           </div>
         </div>
       </div>
@@ -138,6 +144,9 @@ $pageTitle = 'Promo Codes & Deals';
                 <i class="far fa-copy"></i>
               </button>
             </div>
+            <a href="<?= APP_URL ?>/dashboard/owner/book.php?promo=PAWS150" class="promo-use-btn">
+              <i class="fas fa-calendar-check"></i> Use Now
+            </a>
           </div>
         </div>
       </div>
@@ -164,6 +173,9 @@ $pageTitle = 'Promo Codes & Deals';
                 <i class="far fa-copy"></i>
               </button>
             </div>
+            <a href="<?= APP_URL ?>/dashboard/owner/book.php?promo=HEALTHY" class="promo-use-btn">
+              <i class="fas fa-calendar-check"></i> Use Now
+            </a>
           </div>
         </div>
       </div>
@@ -190,6 +202,9 @@ $pageTitle = 'Promo Codes & Deals';
                 <i class="far fa-copy"></i>
               </button>
             </div>
+            <a href="<?= APP_URL ?>/dashboard/owner/book.php?promo=VAXX20" class="promo-use-btn">
+              <i class="fas fa-calendar-check"></i> Use Now
+            </a>
           </div>
         </div>
       </div>
@@ -216,6 +231,9 @@ $pageTitle = 'Promo Codes & Deals';
                 <i class="far fa-copy"></i>
               </button>
             </div>
+            <a href="<?= APP_URL ?>/dashboard/owner/book.php?promo=DENTAL200" class="promo-use-btn">
+              <i class="fas fa-calendar-check"></i> Use Now
+            </a>
           </div>
         </div>
       </div>

@@ -414,6 +414,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </p>
         </div>
 
+        <!-- Promo Code Section -->
+        <div class="form-group promo-code-section">
+          <label class="form-label">
+            <i class="fas fa-tag" style="color:var(--primary);"></i>
+            Have a Promo Code?
+            <a href="<?= APP_URL ?>/promo-codes.php" target="_blank" style="font-size:.8rem;font-weight:400;margin-left:.5rem;">
+              <i class="fas fa-external-link-alt"></i> Browse Promos
+            </a>
+          </label>
+          <div class="promo-code-input-wrapper">
+            <input type="text" 
+                   name="promo_code" 
+                   id="promoCodeInput" 
+                   class="form-control" 
+                   placeholder="Enter promo code (e.g., PETCARE10)"
+                   style="text-transform: uppercase;">
+            <button type="button" 
+                    class="btn btn-outline" 
+                    id="applyPromoBtn"
+                    onclick="applyPromoCode()">
+              Apply
+            </button>
+          </div>
+          <div id="promoMessage" class="promo-message" style="display:none;"></div>
+          <div id="promoDiscount" class="promo-discount-display" style="display:none;">
+            <i class="fas fa-check-circle"></i>
+            <span id="promoDiscountText"></span>
+            <button type="button" class="promo-remove-btn" onclick="removePromoCode()">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-lg" id="confirmBookingBtn"><i class="fas fa-calendar-check"></i> Confirm Booking</button>
       </form>
     </div>
@@ -886,4 +919,101 @@ document.addEventListener('DOMContentLoaded', function() {
     dropzone.style.padding = '2rem 1rem';
   };
 })();
-</script>
+
+// ── PROMO CODE FUNCTIONALITY ────────────────────────────────────
+// Valid promo codes with their discounts
+const promoCodes = {
+  'PETCARE10': { type: 'percentage', value: 10, description: '10% off Veterinary Checkup' },
+  'GROOM15': { type: 'percentage', value: 15, description: '15% off Grooming Service' },
+  'PAWS150': { type: 'fixed', value: 150, description: '₱150 off Pet Supplies (min ₱1000)' },
+  'HEALTHY': { type: 'free', value: 0, description: 'Free Wellness Consultation' },
+  'VAXX20': { type: 'percentage', value: 20, description: '20% off Pet Vaccination' },
+  'DENTAL200': { type: 'fixed', value: 200, description: '₱200 off Dental Cleaning' }
+};
+
+let appliedPromo = null;
+
+function applyPromoCode() {
+  const input = document.getElementById('promoCodeInput');
+  const code = input.value.trim().toUpperCase();
+  const messageDiv = document.getElementById('promoMessage');
+  const discountDiv = document.getElementById('promoDiscount');
+  const discountText = document.getElementById('promoDiscountText');
+  
+  if (!code) {
+    showPromoMessage('Please enter a promo code', 'error');
+    return;
+  }
+  
+  if (!promoCodes[code]) {
+    showPromoMessage('Invalid promo code. Please check and try again.', 'error');
+    return;
+  }
+  
+  appliedPromo = {
+    code: code,
+    ...promoCodes[code]
+  };
+  
+  // Show success message
+  let discountMsg = '';
+  if (appliedPromo.type === 'percentage') {
+    discountMsg = `${appliedPromo.value}% discount applied!`;
+  } else if (appliedPromo.type === 'fixed') {
+    discountMsg = `₱${appliedPromo.value} discount applied!`;
+  } else if (appliedPromo.type === 'free') {
+    discountMsg = 'Free service applied!';
+  }
+  
+  discountText.textContent = `${code}: ${discountMsg} - ${appliedPromo.description}`;
+  discountDiv.style.display = 'flex';
+  messageDiv.style.display = 'none';
+  input.disabled = true;
+  document.getElementById('applyPromoBtn').disabled = true;
+  
+  // Add hidden input for form submission
+  let promoInput = document.getElementById('appliedPromoCode');
+  if (!promoInput) {
+    promoInput = document.createElement('input');
+    promoInput.type = 'hidden';
+    promoInput.id = 'appliedPromoCode';
+    promoInput.name = 'applied_promo_code';
+    document.getElementById('bookForm').appendChild(promoInput);
+  }
+  promoInput.value = code;
+}
+
+function removePromoCode() {
+  appliedPromo = null;
+  document.getElementById('promoCodeInput').value = '';
+  document.getElementById('promoCodeInput').disabled = false;
+  document.getElementById('applyPromoBtn').disabled = false;
+  document.getElementById('promoDiscount').style.display = 'none';
+  document.getElementById('promoMessage').style.display = 'none';
+  
+  const promoInput = document.getElementById('appliedPromoCode');
+  if (promoInput) promoInput.remove();
+}
+
+function showPromoMessage(text, type) {
+  const messageDiv = document.getElementById('promoMessage');
+  messageDiv.textContent = text;
+  messageDiv.className = 'promo-message ' + type;
+  messageDiv.style.display = 'block';
+  
+  if (type === 'error') {
+    setTimeout(() => {
+      messageDiv.style.display = 'none';
+    }, 3000);
+  }
+}
+
+// Auto-fill promo code from URL parameter (if user came from promo codes page)
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const promoFromUrl = urlParams.get('promo');
+  if (promoFromUrl) {
+    document.getElementById('promoCodeInput').value = promoFromUrl.toUpperCase();
+  }
+});
+</script>>
