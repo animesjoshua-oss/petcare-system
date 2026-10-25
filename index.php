@@ -83,6 +83,36 @@ $featuredClinics = $stmt->fetchAll();
 
 </section>
 
+<!-- ========== PROMO CODE SECTION ========== -->
+<section class="promo-section">
+  <div class="container">
+    <div class="promo-banner">
+      <div class="promo-content">
+        <div class="promo-icon">
+          <i class="fas fa-gift"></i>
+        </div>
+        <div class="promo-text">
+          <h3 class="promo-title">Special Offer for New Pet Owners!</h3>
+          <p class="promo-desc">Get <strong>20% OFF</strong> your first veterinary appointment</p>
+        </div>
+      </div>
+      <div class="promo-code-wrapper">
+        <div class="promo-code-box">
+          <span class="promo-label">Promo Code:</span>
+          <code class="promo-code" id="promoCode">PAWCARE20</code>
+          <button class="promo-copy-btn" id="copyPromoBtn" onclick="copyPromoCode()">
+            <i class="fas fa-copy"></i>
+            <span class="copy-text">Copy</span>
+          </button>
+        </div>
+        <p class="promo-expiry">
+          <i class="fas fa-clock"></i> Valid until December 31, 2024
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ========== MARQUEE TICKER ========== -->
 <div class="marquee-strip" aria-hidden="true">
   <div class="marquee-track" id="marqueeTrack">
@@ -135,6 +165,31 @@ $featuredClinics = $stmt->fetchAll();
 
 
 </div><!-- /paw-bg-wrap -->
+
+<!-- Promo Code Copy Function -->
+<script>
+function copyPromoCode() {
+  const promoCode = document.getElementById('promoCode').textContent;
+  const copyBtn = document.getElementById('copyPromoBtn');
+  const copyText = copyBtn.querySelector('.copy-text');
+  
+  // Copy to clipboard
+  navigator.clipboard.writeText(promoCode).then(() => {
+    // Change button text to "Copied!"
+    copyText.textContent = 'Copied!';
+    copyBtn.classList.add('copied');
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      copyText.textContent = 'Copy';
+      copyBtn.classList.remove('copied');
+    }, 2000);
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+    alert('Promo code: ' + promoCode);
+  });
+}
+</script>
 
 <!-- Hero navbar glass effect script -->
 <script>

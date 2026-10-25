@@ -10192,3 +10192,268 @@ p {
   border-color: rgba(255, 255, 255, 0.7) !important;
   transform: none !important;
 }
+
+/* ============================================================
+   PROMO CODE SECTION
+   Special promotional banner with copyable promo code
+   ============================================================ */
+.promo-section {
+  padding: 3rem 0 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.promo-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: float 6s ease-in-out infinite;
+}
+
+.promo-section::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -5%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: float 8s ease-in-out infinite reverse;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+.promo-banner {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-lg);
+  padding: 2rem 2.5rem;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  position: relative;
+  z-index: 1;
+  border: 2px solid rgba(255,255,255,0.8);
+  transition: transform 0.3s ease;
+}
+
+.promo-banner:hover {
+  transform: translateY(-5px);
+}
+
+.promo-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+.promo-icon {
+  font-size: 3rem;
+  color: #667eea;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.promo-text {
+  flex: 1;
+}
+
+.promo-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  font-family: 'Poppins', sans-serif;
+}
+
+.promo-desc {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.promo-desc strong {
+  color: #667eea;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.promo-code-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.promo-code-box {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.promo-label {
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.9);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.promo-code {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+  padding: 0.25rem 0.75rem;
+  background: rgba(255,255,255,0.2);
+  border-radius: 8px;
+  border: 2px dashed rgba(255,255,255,0.5);
+}
+
+.promo-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.4);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.875rem;
+}
+
+.promo-copy-btn:hover {
+  background: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.6);
+  transform: scale(1.05);
+}
+
+.promo-copy-btn.copied {
+  background: #10B981;
+  border-color: #10B981;
+}
+
+.promo-copy-btn i {
+  font-size: 1rem;
+}
+
+.promo-expiry {
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.95);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255,255,255,0.15);
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.promo-expiry i {
+  color: #FCD34D;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .promo-banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 2rem 1.5rem;
+  }
+  
+  .promo-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .promo-code-wrapper {
+    align-items: center;
+    width: 100%;
+  }
+  
+  .promo-code-box {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .promo-section {
+    padding: 2rem 0 1.5rem;
+  }
+  
+  .promo-banner {
+    padding: 1.5rem 1rem;
+  }
+  
+  .promo-title {
+    font-size: 1.25rem;
+  }
+  
+  .promo-desc {
+    font-size: 0.9rem;
+  }
+  
+  .promo-desc strong {
+    font-size: 1.1rem;
+  }
+  
+  .promo-icon {
+    font-size: 2.5rem;
+  }
+  
+  .promo-code {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .promo-title {
+    font-size: 1.1rem;
+  }
+  
+  .promo-code {
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+  }
+  
+  .promo-copy-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
