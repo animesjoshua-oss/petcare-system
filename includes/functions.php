@@ -526,9 +526,11 @@ function statusBadge(string $status): string {
         'completed'   => 'badge-primary',
         'cancelled'   => 'badge-secondary',
         'rescheduled' => 'badge-info',
+        'no_show'     => 'badge-danger',
     ];
     $cls = $map[$status] ?? 'badge-secondary';
-    return '<span class="badge ' . $cls . '">' . ucfirst($status) . '</span>';
+    $label = $status === 'no_show' ? 'No-show' : ucfirst($status);
+    return '<span class="badge ' . $cls . '">' . $label . '</span>';
 }
 
 function getPaginationData(int $total, int $page, int $perPage = 10): array {

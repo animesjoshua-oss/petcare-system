@@ -123,6 +123,10 @@ $vetAppointmentStats = $vetAppointmentStats->fetchAll();
 $recentApptsStmt = $db->prepare("
     SELECT a.*, p.name AS pet_name,p.species AS pet_species,p.breed AS pet_breed,
            CONCAT(ou.first_name,' ',ou.last_name) AS owner_name,ou.email AS owner_email,ou.phone AS owner_phone,
+           (SELECT COUNT(*) FROM pet_health_records hr
+            JOIN veterinarians record_v ON record_v.id=hr.vet_id
+            JOIN clinics record_c ON record_c.id=record_v.clinic_id
+            WHERE hr.pet_id=p.id AND record_c.admin_id=? AND record_c.clinic_type='veterinary') AS medical_record_count,
            c.name AS clinic_name,
            COALESCE(s.name, a.appointment_type) AS svc,
            CONCAT(vu.first_name,' ',vu.last_name) AS veterinarian_name
@@ -136,7 +140,7 @@ $recentApptsStmt = $db->prepare("
     WHERE a.appointment_type='veterinary' AND c.clinic_type='veterinary' AND c.admin_id=?
     ORDER BY a.created_at DESC LIMIT 10
 ");
-$recentApptsStmt->execute([$user['id']]); $recentAppts = $recentApptsStmt->fetchAll();
+$recentApptsStmt->execute([$user['id'],$user['id']]); $recentAppts = $recentApptsStmt->fetchAll();
 
 // Recent users
 $recentUsersStmt = $db->prepare("
@@ -401,18 +405,12 @@ $recentUsersStmt->execute([$user['id'],$user['id'],$user['id']]); $recentUsers =
             <th>Clinic</th>
             <th>Date & Time</th>
             <th>Status</th>
+            <th>Medical Records</th>
             <th class="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <?php foreach($recentAppts as $a):
-            if ($a['status'] === 'completed') $badgeClass = 'badge-success';
-            elseif ($a['status'] === 'approved' || $a['status'] === 'confirmed') $badgeClass = 'badge-info';
-            elseif ($a['status'] === 'pending') $badgeClass = 'badge-warning';
-            elseif ($a['status'] === 'cancelled') $badgeClass = 'badge-secondary';
-            elseif ($a['status'] === 'rejected') $badgeClass = 'badge-danger';
-            else $badgeClass = 'badge-secondary';
-          ?>
+          <?php foreach($recentAppts as $a): ?>
           <tr>
             <td style="font-size:.8rem;color:var(--text-muted);">#<?= (int)$a['id'] ?></td>
             <td>
@@ -442,10 +440,17 @@ $recentUsersStmt->execute([$user['id'],$user['id'],$user['id']]); $recentUsers =
               <div class="table-cell-meta"><?= date('g:i A', strtotime($a['appointment_time'])) ?></div>
             </td>
             <td>
-              <span class="badge <?= $badgeClass ?>"><?= ucfirst($a['status']) ?></span>
+              <?= statusBadge($a['status']) ?>
+            </td>
+            <td>
+              <?php $medicalRecordCount = (int)$a['medical_record_count']; ?>
+              <a href="records.php?pet=<?= (int)$a['pet_id'] ?>&amp;appt=<?= (int)$a['id'] ?>" class="btn btn-outline btn-sm">
+                <i class="fas fa-file-medical"></i> <?= $medicalRecordCount ? 'Records (' . $medicalRecordCount . ')' : 'Add Record' ?>
+              </a>
             </td>
             <td class="text-right">
               <div class="table-actions">
+                <?php $extraActions = ''; ?>
                 <?php include __DIR__ . '/../../includes/appt_actions.php'; ?>
               </div>
             </td>

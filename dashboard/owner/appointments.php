@@ -40,7 +40,7 @@ $appointments = $stmt->fetchAll();
 
 // Counts per status
 $counts = [];
-foreach (['pending','approved','completed','cancelled','rejected'] as $s) {
+foreach (['pending','approved','rescheduled','completed','no_show','cancelled','rejected'] as $s) {
     $cs = $db->prepare("SELECT COUNT(*) FROM appointments WHERE owner_id=? AND status=?");
     $cs->execute([$user['id'], $s]); $counts[$s] = (int)$cs->fetchColumn();
 }
@@ -60,7 +60,8 @@ foreach (['pending','approved','completed','cancelled','rejected'] as $s) {
   <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem;">
     <a href="appointments.php" class="btn btn-sm <?= !$status?'btn-primary':'btn-outline' ?>">All (<?= array_sum($counts) ?>)</a>
     <?php foreach ($counts as $s => $c): ?>
-    <a href="?status=<?= $s ?>" class="btn btn-sm <?= $status===$s?'btn-primary':'btn-outline' ?>"><?= ucfirst($s) ?> (<?= $c ?>)</a>
+    <?php $statusLabel = ['pending' => 'Scheduled', 'approved' => 'Confirmed', 'rescheduled' => 'Rescheduled', 'completed' => 'Completed', 'no_show' => 'No-show', 'cancelled' => 'Cancelled', 'rejected' => 'Rejected'][$s] ?? ucfirst($s); ?>
+    <a href="?status=<?= $s ?>" class="btn btn-sm <?= $status===$s?'btn-primary':'btn-outline' ?>"><?= sanitize($statusLabel) ?> (<?= $c ?>)</a>
     <?php endforeach; ?>
   </div>
 
@@ -86,7 +87,7 @@ foreach (['pending','approved','completed','cancelled','rejected'] as $s) {
           <td><?= statusBadge($a['status']) ?></td>
           <td>
             <div style="display:flex;gap:.4rem;">
-              <?php if (in_array($a['status'],['pending','approved'])): ?>
+              <?php if (in_array($a['status'],['pending','approved','rescheduled'], true)): ?>
               <button onclick="openCancelModal(<?= $a['id'] ?>)" class="btn btn-sm btn-danger"><i class="fas fa-times"></i> Cancel</button>
               <?php endif; ?>
               <?php if ($a['status']==='completed'): ?>

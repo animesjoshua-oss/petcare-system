@@ -67,6 +67,7 @@ $isDashboard = isset($isDashboard) ? (bool)$isDashboard : (strpos($scriptPath, '
         <ul class="nav-menu" id="navMenu">
             <li><a href="<?= APP_URL ?>/index.php" class="nav-link">Home</a></li>
             <li><a href="<?= APP_URL ?>/clinics.php" class="nav-link">Clinics</a></li>
+            <li><a href="<?= APP_URL ?>/promo-codes.php" class="nav-link">Promo Codes</a></li>
         </ul>
 
         <!-- Auth Buttons / User Menu -->
